@@ -19,9 +19,17 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
   const [hover, setHover] = useState(false);
   const [edit, setEdit] = useState(false);
   const [deleted, setDeleted] = useState(false);
-  const [error, setError] = useState(false);
   const inputRef = useRef();
   const toastId = useRef(null);
+  const toastStyle = {
+    position: "top-left",
+    progressStyle: { background: "#3b82f6" },
+    theme: "dark",
+    autoClose: 2500,
+    className:
+      "relative w-64 bottom-6 ml-3 bg-black shadow-sm shadow-slate-400/20 font-medium",
+  };
+
   let icon = "";
 
   const navigate = useNavigate();
@@ -81,16 +89,9 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
 
   const deleteView = (view) => {
     setDeleted(true);
+    toast.dismiss(toastId.current);
     setTimeout(() => {
-      toast.dismiss(toastId.current);
-      toastId.current = toast.info("Successfully deleted!", {
-        position: "top-left",
-        progressStyle: { background: "#3b82f6" },
-        theme: "dark",
-        autoClose: 2500,
-        className:
-          "relative w-64 bottom-6 ml-3 bg-black shadow-md shadow-slate-400/20 font-medium",
-      });
+      toastId.current = toast.info("Successfully deleted!", toastStyle);
       setViews(views.filter((v) => v.dest !== view));
       navigate("/", { replace: true });
     }, 500);
@@ -108,26 +109,12 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
 
   const successToast = (message) => {
     toast.dismiss(toastId.current);
-    toastId.current = toast.success(`Successfully ${message}!`, {
-      position: "top-left",
-      progressStyle: { background: "#3b82f6" },
-      theme: "dark",
-      autoClose: 2500,
-      className:
-        "relative w-64 bottom-6 ml-3 bg-black shadow-md shadow-slate-400/20 font-medium",
-    });
+    toastId.current = toast.success(`Successfully ${message}!`, toastStyle);
   };
 
   const errorToast = (message) => {
     toast.dismiss(toastId.current);
-    toastId.current = toast.error(message, {
-      position: "top-left",
-      progressStyle: { background: "#3b82f6" },
-      theme: "dark",
-      autoClose: 2500,
-      className:
-        "relative w-64 bottom-6 ml-3 bg-black shadow-md shadow-slate-400/20 font-medium",
-    });
+    toastId.current = toast.error(message, toastStyle);
   };
 
   return (

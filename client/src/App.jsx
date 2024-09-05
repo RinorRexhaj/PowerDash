@@ -38,14 +38,14 @@ const App = () => {
             setSearch={setSearch}
             toggleSidebar={toggleSidebar}
           />
-          <div className="w-full h-full overflow-y-auto z-0 -mt-[74px] p-10 sm:px-6 bg-slate-100">
+          <div className="w-full h-full overflow-y-auto z-0 -mt-[74px] p-8 sm:px-6 bg-slate-100">
             <Routes>
               <Route path="/" element={<h1>PowerDash</h1>}></Route>
               {views.map((view) => {
                 return (
                   <Route
                     path={`/${view.dest.toLowerCase()}`}
-                    element={<View type={view.dest} />}
+                    element={<View type={view.dest} key={view.dest} />}
                     key={view.dest}
                     created={view.created}
                   />
