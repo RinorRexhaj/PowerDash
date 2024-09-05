@@ -10,6 +10,8 @@ import {
   faChartSimple,
   faPenToSquare,
   faTrash,
+  faX,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
@@ -117,64 +119,137 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
     toastId.current = toast.error(message, toastStyle);
   };
 
+  //On Delete Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const openModal = () => {
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    };
+
+    const handleClickOutsideModal = (event) => {
+      if (event.target.classList.contains("overlay")) {
+        closeModal();
+      }
+    };
+
+    if (modalVisible) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("click", handleClickOutsideModal);
+    } else {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("click", handleClickOutsideModal);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("click", handleClickOutsideModal);
+    };
+  }, [modalVisible]);
+
   return (
-    <Link
-      to={`/${destination.toLowerCase()}`}
-      className={`relative w-full h-10 py-2 px-4 flex gap-3 items-center font-medium ${
-        selected ? "bg-slate-700" : "bg-inherit"
-      } text-slate-200 rounded-sm hover:bg-slate-500 duration-200 ease-linear sm:px-2 ${
-        deleted
-          ? "animate-fadeOut"
-          : created
-          ? "animate-slideIn [animation-fill-mode:backwards]"
-          : ""
-      } transition-all`}
-      style={{
-        animationDelay: !created ? `${index * 0.3}s` : "0s",
-        top: `${index * 10}px`,
-      }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <FontAwesomeIcon icon={icon} />
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          checkValue(inputRef.current.value);
+    <>
+      <Link
+        to={`/${destination.toLowerCase()}`}
+        className={`relative w-full h-10 py-2 px-4 flex gap-3 items-center font-medium ${
+          selected ? "bg-slate-700" : "bg-inherit"
+        } text-slate-200 rounded-sm hover:bg-slate-500 duration-200 ease-linear sm:px-2 ${
+          deleted
+            ? "animate-fadeOut"
+            : created
+            ? "animate-slideIn [animation-fill-mode:backwards]"
+            : ""
+        } transition-all`}
+        style={{
+          animationDelay: !created ? `${index * 0.3}s` : "0s",
+          top: `${index * 10}px`,
         }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
       >
-        <input
-          type="text"
-          defaultValue={destination}
-          readOnly={!edit && !created}
-          onBlur={(e) => {
-            const value = e.target.value;
-            checkValue(value);
+        <FontAwesomeIcon icon={icon} />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            checkValue(inputRef.current.value);
           }}
-          ref={inputRef}
-          className={`bg-transparent outline-none ${!edit && "cursor-pointer"}`}
-        />
-      </form>
+        >
+          <input
+            type="text"
+            defaultValue={destination}
+            readOnly={!edit && !created}
+            onBlur={(e) => {
+              const value = e.target.value;
+              checkValue(value);
+            }}
+            ref={inputRef}
+            className={`bg-transparent outline-none ${
+              !edit && "cursor-pointer"
+            }`}
+          />
+        </form>
+        <div
+          className={`relative right-8 flex items-center gap-2 ${
+            hover ? "opacity-100 z-10" : "opacity-0 -z-10"
+          }`}
+        >
+          <FontAwesomeIcon
+            icon={faPenToSquare}
+            className="hover:text-blue-500 transition delay-100"
+            onClick={() => {
+              setEdit(true);
+              inputRef.current.focus();
+            }}
+          />
+          <FontAwesomeIcon
+            icon={faTrash}
+            className="hover:text-red-500 transition delay-100"
+            onClick={() => {
+              openModal();
+            }}
+          />
+        </div>
+      </Link>
       <div
-        className={`relative right-8 flex items-center gap-2 ${
-          hover ? "opacity-100 z-10" : "opacity-0 -z-10"
-        }`}
+        className={`fixed inset-0 flex items-center justify-center ${
+          modalVisible ? "opacity-100 z-50" : "opacity-0 -z-99"
+        } transition-opacity duration-200 ease-in`}
       >
-        <FontAwesomeIcon
-          icon={faPenToSquare}
-          className="hover:text-blue-500 transition delay-100"
-          onClick={() => {
-            setEdit(true);
-            inputRef.current.focus();
-          }}
-        />
-        <FontAwesomeIcon
-          icon={faTrash}
-          className="hover:text-red-500 transition delay-100"
-          onClick={() => deleteView(destination)}
-        />
+        <div className="relative bg-white p-8 rounded-md z-50 w-100 md:w-80">
+          <h1 className="text-xl text-center font-medium">
+            Are you sure you want to delete the{" "}
+            <span className="italic font-semibold">{destination}</span> table
+          </h1>
+          <div className="mt-5 flex gap-5 items-center justify-center">
+            <button
+              className="bg-green-500 px-7 py-2 rounded-lg hover:scale-[1.05]"
+              onClick={() => deleteView(destination)}
+            >
+              <FontAwesomeIcon className="text-white" icon={faCheck} />
+            </button>
+
+            <button
+              className="bg-red-500 px-7 py-2 rounded-lg hover:scale-[1.05]"
+              onClick={() => {
+                closeModal();
+              }}
+            >
+              <FontAwesomeIcon className="text-white" icon={faX} />
+            </button>
+          </div>
+        </div>
+        <div className="overlay fixed inset-0 bg-black opacity-50"></div>
       </div>
-    </Link>
+    </>
   );
 };
 
