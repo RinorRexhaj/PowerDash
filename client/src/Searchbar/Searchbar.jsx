@@ -89,7 +89,7 @@ const Searchbar = ({ search, setSearch, toggleSidebar }) => {
           type="text"
           placeholder="Type to search..."
           className={`outline-none p-3 w-7/12 border-b-2 border-slate-200 opacity-100`}
-          value={search}
+          defaultValue={search}
         />
       </div>
       <div className="flex gap-5 md:gap-3 sm:absolute sm:right-0 z-10">
