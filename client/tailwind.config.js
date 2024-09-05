@@ -258,6 +258,11 @@ module.exports = {
           "0%": { width: "100%" },
           "100%": { width: "0%" },
         },
+        slideIn: {
+          "0%": { opacity: "0", transform: "translateX(-100%)" },
+          "60%": { opacity: "0.5" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
         shake: {
           "10%, 90%": {
             transform: "translate3d(-1px, 0, 0)",
@@ -280,10 +285,24 @@ module.exports = {
             top: "15px",
           },
           "60%": {
-            top: "15px",
+            top: "16px",
           },
           "100%": {
             top: "36px",
+          },
+        },
+        lightningStrike: {
+          "0%": {
+            opacity: "40%",
+          },
+          "40%": {
+            opacity: "100%",
+          },
+          "60%": {
+            opacity: "60%",
+          },
+          "100%": {
+            opacity: "100%",
           },
         },
       },
@@ -298,8 +317,10 @@ module.exports = {
         fadeOut: "fadeOut 0.3s ease-in-out",
         typing: "type 1s infinite",
         sliding: "slide 5s linear",
+        slideIn: "slideIn 0.5s ease-in-out",
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
-        lightning: "lightning 0.5s ease-in-out",
+        lightning: "lightning 0.75s ease-in-out",
+        lightningStrike: "lightningStrike 0.75s ease-in-out",
       },
     },
   },
