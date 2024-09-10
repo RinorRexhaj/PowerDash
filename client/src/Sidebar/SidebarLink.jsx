@@ -16,12 +16,13 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import MiniModal from "../components/MiniModal";
 
 const SidebarLink = ({ destination, created, views, setViews, index }) => {
   const [hover, setHover] = useState(false);
   const [edit, setEdit] = useState(false);
   const [deleted, setDeleted] = useState(false);
-  const [error, setError] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const inputRef = useRef();
   const toastId = useRef(null);
   let icon = "";
@@ -52,6 +53,33 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
       inputRef.current.focus();
     }
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    };
+
+    const handleClickOutsideModal = (event) => {
+      if (event.target.classList.contains("overlay")) {
+        closeModal();
+      }
+    };
+
+    if (modalVisible) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("click", handleClickOutsideModal);
+    } else {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("click", handleClickOutsideModal);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("click", handleClickOutsideModal);
+    };
+  }, [modalVisible]);
 
   const viewExists = (view) => {
     for (let i = 0; i < views.length; i++)
@@ -94,6 +122,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
           "relative w-64 bottom-6 ml-3 bg-black shadow-md shadow-slate-400/20 font-medium",
       });
       setViews(views.filter((v) => v.dest !== view));
+      setModalVisible(false);
       navigate("/", { replace: true });
     }, 500);
   };
@@ -133,7 +162,6 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
   };
 
   //On Delete Modal
-  const [modalVisible, setModalVisible] = useState(false);
   const openModal = () => {
     setModalVisible(true);
   };
@@ -141,33 +169,6 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
   const closeModal = () => {
     setModalVisible(false);
   };
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        closeModal();
-      }
-    };
-
-    const handleClickOutsideModal = (event) => {
-      if (event.target.classList.contains("overlay")) {
-        closeModal();
-      }
-    };
-
-    if (modalVisible) {
-      document.addEventListener("keydown", handleKeyDown);
-      document.addEventListener("click", handleClickOutsideModal);
-    } else {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("click", handleClickOutsideModal);
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("click", handleClickOutsideModal);
-    };
-  }, [modalVisible]);
 
   return (
     <>
@@ -177,7 +178,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
           selected ? "bg-slate-700" : "bg-inherit"
         } text-slate-200 rounded-sm hover:bg-slate-500 duration-200 ease-linear sm:px-2 ${
           deleted
-            ? "animate-fadeOut"
+            ? "animate-fadeOut [animation-fill-mode:backwards]"
             : created
             ? "animate-slideIn [animation-fill-mode:backwards]"
             : ""
@@ -232,36 +233,12 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
           />
         </div>
       </Link>
-      <div
-        className={`fixed inset-0 flex items-center justify-center ${
-          modalVisible ? "opacity-100 z-50" : "opacity-0 -z-99"
-        } transition-opacity duration-200 ease-in`}
-      >
-        <div className="relative bg-white p-8 rounded-md z-50 w-100 md:w-80">
-          <h1 className="text-xl text-center font-medium">
-            Are you sure you want to delete the{" "}
-            <span className="italic font-semibold">{destination}</span> table
-          </h1>
-          <div className="mt-5 flex gap-5 items-center justify-center">
-            <button
-              className="bg-green-500 px-7 py-2 rounded-lg hover:scale-[1.05]"
-              onClick={() => deleteView(destination)}
-            >
-              <FontAwesomeIcon className="text-white" icon={faCheck} />
-            </button>
-
-            <button
-              className="bg-red-500 px-7 py-2 rounded-lg hover:scale-[1.05]"
-              onClick={() => {
-                closeModal();
-              }}
-            >
-              <FontAwesomeIcon className="text-white" icon={faX} />
-            </button>
-          </div>
-        </div>
-        <div className="overlay fixed inset-0 bg-black opacity-50"></div>
-      </div>
+      <MiniModal
+        modalVisible={modalVisible}
+        destination={destination}
+        deleteView={deleteView}
+        closeModal={closeModal}
+      />
     </>
   );
 };
