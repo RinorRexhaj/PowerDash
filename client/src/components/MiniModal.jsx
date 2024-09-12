@@ -4,10 +4,16 @@ const MiniModal = ({ modalVisible, destination, deleteView, closeModal }) => {
   return (
     <div
       className={`fixed inset-0 flex items-center justify-center ${
-        modalVisible ? "opacity-100 z-50" : "opacity-0 -z-99"
+        modalVisible
+          ? "opacity-100 z-50 animate-fade"
+          : "opacity-0 -z-50 animate-fadeOut"
       } transition-opacity duration-200 ease-in`}
     >
-      <div className={`relative bg-white p-8 rounded-md w-100 md:w-80`}>
+      <div
+        className={`relative ${
+          modalVisible ? "opacity-100 z-50" : "opacity-0 -z-50"
+        } bg-white p-8 rounded-md w-100 md:w-80`}
+      >
         <h1 className="text-xl text-center font-medium">
           Are you sure you want to delete the{" "}
           <span className="font-semibold">{destination}</span> table?

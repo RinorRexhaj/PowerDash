@@ -9,7 +9,7 @@ import {
 import { useRef, useState } from "react";
 import Sidebar from "./Sidebar/Sidebar";
 import Searchbar from "./Searchbar/Searchbar";
-import View from "./components/View";
+import View from "./View/View";
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

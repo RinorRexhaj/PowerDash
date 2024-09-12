@@ -233,12 +233,14 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
           />
         </div>
       </Link>
-      <MiniModal
-        modalVisible={modalVisible}
-        destination={destination}
-        deleteView={deleteView}
-        closeModal={closeModal}
-      />
+      {modalVisible && (
+        <MiniModal
+          modalVisible={modalVisible}
+          destination={destination}
+          deleteView={deleteView}
+          closeModal={closeModal}
+        />
+      )}
     </>
   );
 };
