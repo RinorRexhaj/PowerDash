@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar/Sidebar";
 import Searchbar from "./Searchbar/Searchbar";
 import View from "./components/View";
+// import Onboarding from "./Onboarding/Onboarding";
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,6 +23,25 @@ const App = () => {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  //check if user has already onboarded before
+  // const [hasOnboarded, setHasOnboarded] = useState(false);
+  // useEffect(() => {
+  //   const onboarded = localStorage.getItem("hasOnboarded");
+  //   if (onboarded) {
+  //     setHasOnboarded(false);
+  //   }
+  // }, []);
+
+  // //when oboarding is complete
+  // const completeOnboarding = () => {
+  //   localStorage.setItem("hasOnboarded", "true");
+  //   setHasOnboarded(true);
+  // };
+
+  // if (!hasOnboarded) {
+  //   return <Onboarding completeOnboarding={completeOnboarding} />;
+  // }
 
   return (
     <div className="w-full h-screen flex relative overflow-hidden">

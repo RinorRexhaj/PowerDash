@@ -7,11 +7,16 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-toastify";
 import { Link } from "react-router-dom";
+import ImportExcel from "../components/ImportExcel";
 
 const Sidebar = ({ open, toggleSidebar, views, setViews }) => {
   const addView = () => {
     setViews([...views, { dest: "", created: true }]);
   };
+
+  // const handleFileChange = (e) => {
+  //   console.log(e.target.files[0]); // Logs selected file
+  // };
 
   return (
     <div
@@ -58,6 +63,7 @@ const Sidebar = ({ open, toggleSidebar, views, setViews }) => {
             );
           })}
         </div>
+        {/* <ImportExcel /> */}
       </div>
     </div>
   );

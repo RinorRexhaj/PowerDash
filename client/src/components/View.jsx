@@ -1,4 +1,5 @@
 import React from "react";
+import ImportExcel from "./ImportExcel";
 
 const View = ({ type, created }) => {
   return (
@@ -11,6 +12,7 @@ const View = ({ type, created }) => {
       <div className="w-full relative min-h-125 shadow-2 bg-white flex flex-col">
         <div className="w-full flex items-center justify-between bg-white py-4 px-8 sm:px-4">
           <h1 className="text-xl font-semibold">{type}</h1>
+          <ImportExcel />
         </div>
         <span className="w-full h-[1px] bg-slate-200"></span>
       </div>
