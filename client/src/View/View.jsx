@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React from "react";
 import Row from "./Row";
 import Columns from "./Columns";
+import ImportExcel from "../components/ImportExcel";
 
 const View = ({ type, created, deleted }) => {
   const data = [
@@ -160,6 +161,7 @@ const View = ({ type, created, deleted }) => {
         <span className="w-full h-[1px] bg-slate-200"></span>
         <Columns data={data[0]} />
         <span className="w-full h-[0.5px] bg-slate-200"></span>
+        <ImportExcel />
         {data.map((element, index) => {
           return <Row element={element} index={index} key={index} />;
         })}

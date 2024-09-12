@@ -22,6 +22,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
   const [hover, setHover] = useState(false);
   const [edit, setEdit] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const inputRef = useRef();
   const toastId = useRef(null);
   const toastStyle = {
