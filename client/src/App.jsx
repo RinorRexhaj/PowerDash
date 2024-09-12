@@ -6,10 +6,10 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import Sidebar from "./Sidebar/Sidebar";
 import Searchbar from "./Searchbar/Searchbar";
-import View from "./components/View";
+import View from "./View/View";
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -18,6 +18,7 @@ const App = () => {
     { dest: "Dashboard" },
     { dest: "Products" },
   ]);
+  const searchRef = useRef();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -37,15 +38,16 @@ const App = () => {
             search={search}
             setSearch={setSearch}
             toggleSidebar={toggleSidebar}
+            searchRef={searchRef}
           />
-          <div className="w-full h-full overflow-y-auto z-0 -mt-[74px] p-10 sm:px-6 bg-slate-100">
+          <div className="w-full h-full overflow-y-auto z-0 -mt-[74px] p-8 sm:px-6 bg-slate-100">
             <Routes>
               <Route path="/" element={<h1>PowerDash</h1>}></Route>
               {views.map((view) => {
                 return (
                   <Route
                     path={`/${view.dest.toLowerCase()}`}
-                    element={<View type={view.dest} />}
+                    element={<View type={view.dest} key={view.dest} />}
                     key={view.dest}
                     created={view.created}
                   />

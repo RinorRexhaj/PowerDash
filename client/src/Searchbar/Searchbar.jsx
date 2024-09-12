@@ -17,7 +17,7 @@ import { Link } from "react-router-dom";
 import Modal from "../components/Modal";
 import Chat from "./Chat";
 
-const Searchbar = ({ search, setSearch, toggleSidebar }) => {
+const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
   const [menu, setMenu] = useState(false);
   const [chat, setChat] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -90,6 +90,7 @@ const Searchbar = ({ search, setSearch, toggleSidebar }) => {
           placeholder="Type to search..."
           className={`outline-none p-3 w-7/12 border-b-2 border-slate-200 opacity-100`}
           defaultValue={search}
+          ref={searchRef}
         />
       </div>
       <div className="flex gap-5 md:gap-3 sm:absolute sm:right-0 z-10">
