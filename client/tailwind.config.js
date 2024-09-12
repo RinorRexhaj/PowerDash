@@ -310,6 +310,10 @@ module.exports = {
             opacity: "100%",
           },
         },
+        textReveal: {
+          "0%": { transform: "translate(0, 100%)" },
+          "100%": { transform: "translate(0, 0)" },
+        },
       },
       animation: {
         "ping-once": "ping 5s cubic-bezier(0, 0, 0.2, 1)",
@@ -327,6 +331,7 @@ module.exports = {
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
         lightning: "lightning 0.75s ease-in-out",
         lightningStrike: "lightningStrike 0.75s ease-in-out",
+        textReveal: "textReveal 1.5s cubic-bezier(0.77, 0, 0.175, 1) 0.5s",
       },
     },
   },
