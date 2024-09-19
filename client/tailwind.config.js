@@ -314,6 +314,22 @@ module.exports = {
           "0%": { transform: "translate(0, 100%)" },
           "100%": { transform: "translate(0, 0)" },
         },
+        glassIn: {
+          "0%": {
+            transform: "rotate(0deg)",
+          },
+          "100%": {
+            transform: "rotate(90deg)",
+          },
+        },
+        glassOut: {
+          "0%": {
+            transform: "rotate(90deg)",
+          },
+          "100%": {
+            transform: "rotate(0deg)",
+          },
+        },
       },
       animation: {
         "ping-once": "ping 5s cubic-bezier(0, 0, 0.2, 1)",
@@ -332,6 +348,8 @@ module.exports = {
         lightning: "lightning 0.75s ease-in-out",
         lightningStrike: "lightningStrike 0.75s ease-in-out",
         textReveal: "textReveal 1.5s cubic-bezier(0.77, 0, 0.175, 1) 0.5s",
+        glassIn: "glassIn 0.3s linear",
+        glassOut: "glassOut 0.3s linear",
       },
     },
   },

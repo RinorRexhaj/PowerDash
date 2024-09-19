@@ -24,6 +24,7 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
   const [profile, setProfile] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const toggleMenu = () => {
     setMenu(!menu);
@@ -83,14 +84,18 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
       <div className="w-full flex z-10 items-center gap-4.5 tb:relative tb:left-15 sm:left-10 sm:w-60">
         <FontAwesomeIcon
           icon={faMagnifyingGlass}
-          className="w-6 h-6 text-slate-600 sm:hidden"
+          className={`w-6 h-6 text-slate-600 sm:hidden ${
+            inputFocused ? "animate-glassIn" : "animate-glassOut"
+          } [animation-fill-mode:forwards]`}
         />
         <input
           type="text"
-          placeholder="Type to search..."
-          className={`outline-none p-3 w-7/12 border-b-2 border-slate-200 opacity-100`}
+          placeholder="Type to search...   [ / ]"
+          className={`outline-none px-1 py-3 w-7/12 border-b-2 border-slate-200 focus:border-slate-400 duration-200 opacity-100 transition-width`}
           defaultValue={search}
           ref={searchRef}
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
         />
       </div>
       <div className="flex gap-5 md:gap-3 sm:absolute sm:right-0 z-10">
