@@ -6,7 +6,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sidebar from "./Sidebar/Sidebar";
 import Searchbar from "./Searchbar/Searchbar";
 import View from "./View/View";
@@ -24,6 +24,12 @@ const App = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  useEffect(() => {
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "/") searchRef.current.focus();
+    });
+  }, []);
+
   return (
     <div className="w-full h-screen flex relative overflow-hidden">
       <BrowserRouter>
@@ -40,9 +46,10 @@ const App = () => {
             toggleSidebar={toggleSidebar}
             searchRef={searchRef}
           />
-          <div className="w-full h-full overflow-y-auto z-0 -mt-[74px] p-8 sm:px-6 bg-slate-100">
+          <div className="w-full h-full overflow-y-auto z-0 -mt-[74px] py-6 px-8 sm:px-6 bg-slate-100">
+            <div className="w-full absolute top-25.5 left-0 h-6 bg-slate-100 z-99"></div>
             <Routes>
-              <Route path="/" element={<h1>PowerDash</h1>}></Route>
+              <Route path="/" element={<h1>PowerDash</h1>} />
               {views.map((view) => {
                 return (
                   <Route
