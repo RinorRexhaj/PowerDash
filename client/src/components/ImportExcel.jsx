@@ -68,7 +68,6 @@ const ImportExcel = ({
       for (let i = 0; i < fixedData.length; i++) {
         fixedData[i] = fixedData[i].slice(minColumn);
       }
-      console.log(fixedData);
       localStorage.setItem(type, JSON.stringify(fixedData));
       setData(fixedData);
       setFileImported(true);
