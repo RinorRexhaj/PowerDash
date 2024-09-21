@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import OpenAI from "openai/index.mjs";
 import {
   Bar,
   BarChart,
@@ -8,9 +9,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import env from "react-dotenv";
 
 const Chart = ({ data }) => {
-  const xAxisKey = Object.keys(data[0])[0];
+  const [dataTypes, setDataTypes] = useState(null);
+  const [formattedData, setFormattedData] = useState([]);
+  const xAxisKey = Object.keys(data[0])[1];
   const barDataKey = Object.keys(data[0])[5];
 
   const colors = [
@@ -28,19 +32,50 @@ const Chart = ({ data }) => {
     "#a05195",
   ];
 
-  data = data.map((item) => {
-    const amount = parseFloat(item.Amount.replace(/[$,]/g, ""));
+  // useEffect(() => {
+  //   const fetchDataTypes = async () => {
+  //     try {
+  //       const openai = new OpenAI({
+  //         apiKey:
+  //           env.OPEN_AI_KEY,
+  //         dangerouslyAllowBrowser: true,
+  //       });
+  //       const response = await openai.chat.completions.create({
+  //         model: "gpt-4o-mini",
+  //         messages: [
+  //           { role: "system", content: "You are a helpful assistant." },
+  //           {
+  //             role: "user",
+  //             content:
+  //               "Return the data types of these columns in this array: " +
+  //               JSON.stringify(data[0]),
+  //           },
+  //         ],
+  //       });
 
-    const deliveryDate = new Date(item["Delivery Date"]);
+  //       console.log(response.choices[0].message.content);
+  //       setDataTypes(response.choices[0].message.content);
+  //     } catch (error) {
+  //       console.error("Error fetching data types:", error);
+  //     }
+  //   };
 
-    return {
-      ...item,
-      Amount: amount,
-      "Delivery Date": isNaN(deliveryDate.getTime())
-        ? item["Delivery Date"]
-        : deliveryDate,
-    };
-  });
+  //   fetchDataTypes();
+  // }, [data]);
+
+  // const formatData = () => {
+  //   setFormattedData(
+  //     data.map((row) => {
+  //       return {
+  //         ...row,
+  //         Amount: parseFloat(row.Amount.replace(/[^0-9.-]+/g, "")),
+  //         "Delivery Date": isNaN(new Date(row["Delivery Date"]).getTime())
+  //           ? row["Delivery Date"]
+  //           : new Date(row["Delivery Date"]),
+  //       };
+  //     })
+  //   );
+  // };
 
   return (
     <div className="p-6">
