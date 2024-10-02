@@ -5,6 +5,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Label,
+  LabelList,
+  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -36,8 +39,7 @@ const Chart = ({ data }) => {
   //   const fetchDataTypes = async () => {
   //     try {
   //       const openai = new OpenAI({
-  //         apiKey:
-  //           env.OPEN_AI_KEY,
+  //         apiKey: import.meta.env.VITE_OPEN_AI_KEY,
   //         dangerouslyAllowBrowser: true,
   //       });
   //       const response = await openai.chat.completions.create({
@@ -63,26 +65,54 @@ const Chart = ({ data }) => {
   //   fetchDataTypes();
   // }, [data]);
 
-  // const formatData = () => {
-  //   setFormattedData(
-  //     data.map((row) => {
-  //       return {
-  //         ...row,
-  //         Amount: parseFloat(row.Amount.replace(/[^0-9.-]+/g, "")),
-  //         "Delivery Date": isNaN(new Date(row["Delivery Date"]).getTime())
-  //           ? row["Delivery Date"]
-  //           : new Date(row["Delivery Date"]),
-  //       };
-  //     })
-  //   );
-  // };
+  const formatData = () => {
+    setFormattedData(
+      data.map((row) => {
+        return {
+          ...row,
+          Amount: parseFloat(row.Amount.replace(/[^0-9.-]+/g, "")),
+          "Delivery Date": isNaN(new Date(row["Delivery Date"]).getTime())
+            ? row["Delivery Date"]
+            : new Date(row["Delivery Date"]),
+        };
+      })
+    );
+  };
+
+  useEffect(() => {
+    formatData();
+  }, []);
 
   return (
-    <div className="p-6">
-      <BarChart width={830} height={350} data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xAxisKey} className="font-medium" />
-        <YAxis className="font-medium" />
+    <ResponsiveContainer className="p-2 relative" width="100%" height={450}>
+      <BarChart
+        data={formattedData}
+        margin={{ top: 20, right: 30, left: 25, bottom: 20 }}
+      >
+        <CartesianGrid strokeDasharray="4 4" />
+        <XAxis
+          dataKey={xAxisKey}
+          className="font-medium relative text-sm"
+          angle={-45}
+          textAnchor="end"
+          height={60}
+        >
+          <Label
+            value={xAxisKey}
+            offset={5}
+            position={"bottom"}
+            className="text-black text-lg"
+          />
+        </XAxis>
+        <YAxis className="font-medium">
+          <Label
+            value={barDataKey}
+            angle={-90}
+            offset={15}
+            position={"left"}
+            className="text-black text-lg"
+          />
+        </YAxis>
         <Tooltip />
         <Bar dataKey={barDataKey}>
           {data.map((entry, index) => (
@@ -90,7 +120,7 @@ const Chart = ({ data }) => {
           ))}
         </Bar>
       </BarChart>
-    </div>
+    </ResponsiveContainer>
   );
 };
 
