@@ -8,15 +8,31 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ScatterChart,
+  Scatter,
+  Pie,
+  PieChart,
 } from "recharts";
 import env from "react-dotenv";
 
 const Chart = ({ data }) => {
-  const [dataTypes, setDataTypes] = useState(null);
-  const [formattedData, setFormattedData] = useState([]);
-  const xAxisKey = Object.keys(data[0])[1];
-  const barDataKey = Object.keys(data[0])[5];
+  const [chartType, setChartType] = useState("Bar");
+  const [xAxisKey, setXAxisKey] = useState("");
+  const [yAxisKey, setYAxisKey] = useState("");
 
+  useEffect(() => {
+    if (data && data.length > 0) {
+      initializeKeys(data);
+    }
+  }, [data]);
+
+  const initializeKeys = (data) => {
+    const keys = Object.keys(data[0]);
+    if (keys.length >= 2) {
+      setXAxisKey(keys[0]);
+      setYAxisKey(keys[1]);
+    }
+  };
   const colors = [
     "#003f5c",
     "#2f4b7c",
@@ -79,17 +95,92 @@ const Chart = ({ data }) => {
 
   return (
     <div className="p-6">
-      <BarChart width={830} height={350} data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xAxisKey} className="font-medium" />
-        <YAxis className="font-medium" />
-        <Tooltip />
-        <Bar dataKey={barDataKey}>
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+      <div className="flex items-center gap-4 mb-4">
+        <label>Choose Chart Type: </label>
+        <select
+          onChange={(e) => setChartType(e.target.value)}
+          value={chartType}
+        >
+          <option value="Bar">Bar Chart</option>
+          <option value="Pie">Pie Chart</option>
+          <option value="Scatter">Scatter Chart</option>
+        </select>
+      </div>
+
+      <div className="flex items-center gap-4 mb-4">
+        <label>X-Axis: </label>
+        <select onChange={(e) => setXAxisKey(e.target.value)} value={xAxisKey}>
+          {Object.keys(data[0] || {}).map((key) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
           ))}
-        </Bar>
-      </BarChart>
+        </select>
+
+        {chartType !== "Pie" && (
+          <>
+            <label>Y-Axis: </label>
+            <select
+              onChange={(e) => setYAxisKey(e.target.value)}
+              value={yAxisKey}
+            >
+              {Object.keys(data[0] || {}).map((key) => (
+                <option key={key} value={key}>
+                  {key}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+      </div>
+
+      {chartType === "Bar" && (
+        <BarChart width={830} height={350} data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey={xAxisKey} className="font-medium" />
+          <YAxis dataKey={yAxisKey} className="font-medium" />
+          <Tooltip />
+          <Bar dataKey={yAxisKey}>
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={colors[index % colors.length]}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      )}
+
+      {chartType === "Pie" && (
+        <PieChart width={400} height={400}>
+          <Pie
+            dataKey={xAxisKey}
+            data={data}
+            cx="50%"
+            cy="50%"
+            outerRadius={150}
+            fill="#82ca9d"
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={colors[index % colors.length]}
+              />
+            ))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      )}
+
+      {chartType === "Scatter" && (
+        <ScatterChart width={830} height={350}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey={xAxisKey} className="font-medium" />
+          <YAxis dataKey={yAxisKey} className="font-medium" />
+          <Tooltip />
+          <Scatter data={data} fill="#8884d8" />
+        </ScatterChart>
+      )}
     </div>
   );
 };
