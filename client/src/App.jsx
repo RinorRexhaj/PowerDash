@@ -13,6 +13,8 @@ import View from "./View/View";
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [data, setData] = useState([]);
+  const [searchData, setSearchData] = useState([]);
   const [search, setSearch] = useState("");
   const [views, setViews] = useState([
     { dest: "Dashboard" },
@@ -54,7 +56,14 @@ const App = () => {
                 return (
                   <Route
                     path={`/${view.dest.toLowerCase()}`}
-                    element={<View type={view.dest} key={view.dest} />}
+                    element={
+                      <View
+                        type={view.dest}
+                        data={data}
+                        setData={setData}
+                        key={view.dest}
+                      />
+                    }
                     key={view.dest}
                     created={view.created}
                   />

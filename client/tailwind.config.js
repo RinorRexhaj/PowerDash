@@ -263,6 +263,11 @@ module.exports = {
           "60%": { opacity: "0.5" },
           "100%": { opacity: "1", transform: "translateX(0)" },
         },
+        slideOut: {
+          "0%": { opacity: "0", transform: "translateX(0%)" },
+          "60%": { opacity: "0.5" },
+          "100%": { opacity: "1", transform: "translateX(100%)" },
+        },
         slideDown: {
           "0%": { opacity: "0", transform: "translateY(-70%)" },
           "60%": { opacity: "0.5" },
@@ -343,6 +348,7 @@ module.exports = {
         typing: "type 1s infinite",
         sliding: "slide 5s linear",
         slideIn: "slideIn 0.5s ease-in-out",
+        slideOut: "slideOut 0.5s ease-in-out",
         slideDown: "slideDown 0.5s ease-in-out",
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
         lightning: "lightning 0.75s ease-in-out",

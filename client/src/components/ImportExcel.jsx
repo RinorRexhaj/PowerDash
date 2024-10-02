@@ -6,15 +6,18 @@ import { faTable, faX } from "@fortawesome/free-solid-svg-icons";
 const ImportExcel = ({
   type,
   setData,
+  setLoading,
   setFileSelected,
   setFileImported,
   inputRef,
-  setMinCol,
 }) => {
   const [sheetNames, setSheetNames] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [fileData, setFileData] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  let minColumn, maxColumn;
+  let minRow, maxRow;
+  let cells = [];
 
   const handleFileUpload = (e) => {
     const reader = new FileReader();
@@ -54,52 +57,61 @@ const ImportExcel = ({
       const merges =
         sheet["!merges"] !== undefined &&
         sheet["!merges"].sort((a, b) => a.s.r - b.s.r);
-      const parsedData = XLSX.utils.sheet_to_json(sheet, {
-        raw: false,
-        header: 1,
-      });
-      let minColumn;
-      let maxColumn;
-      parsedData.forEach((row) => {
-        if (maxColumn === undefined || row.length > maxColumn)
-          maxColumn = row.length;
-        for (let i = 0; i < maxColumn; i++) {
-          if (row[i] === undefined) row[i] = "";
-          else if (i < minColumn || minColumn === undefined) minColumn = i;
-        }
-      });
-      setMinCol(minColumn);
+      setBoundaries(sheet);
+      cells.length = maxRow - minRow + 1;
+      for (let i = 0; i < cells.length; i++) {
+        cells[i] = [];
+        for (let j = 0; j < maxColumn - minColumn + 1; j++) cells[i][j] = "";
+      }
+      setValues(sheet);
       if (merges) {
         merges.forEach((m) => {
-          const col =
-            m.s.c === parsedData[m.s.r].length
-              ? m.s.c - 1
-              : 2 * m.s.c - parsedData[m.s.r].length > 0
-              ? 2 * m.s.c - parsedData[m.s.r].length
-              : m.s.c;
-          const val = parsedData[m.s.r][col];
+          const val = cells[m.s.r - minRow][m.s.c - minColumn];
           for (let i = m.s.r; i <= m.e.r; i++) {
-            if (parsedData[i][col] === "") {
-              parsedData[i][col] = val;
-            }
-            for (let j = col; j <= m.e.c; j++) {
-              if (parsedData[i][j] === "") {
-                parsedData[i][j] = val;
-              }
+            for (let j = m.s.c; j <= m.e.c; j++) {
+              cells[i - minRow][j - minColumn] = val;
             }
           }
         });
       }
-      const fixedData = parsedData.filter(
-        (row) => row.length > 0 && !emptyRow(row)
-      );
-      for (let i = 0; i < fixedData.length; i++) {
-        fixedData[i] = fixedData[i].slice(minColumn);
-      }
-      localStorage.setItem(type, JSON.stringify(fixedData));
+      const fixedData = cells.filter((row) => row.length > 0 && !emptyRow(row));
       setData(fixedData);
+      localStorage.setItem(type, JSON.stringify(fixedData));
       setFileImported(true);
     }
+  };
+
+  const setBoundaries = (sheet) => {
+    Object.entries(sheet).map(([key]) => {
+      if (key === "!ref" || key === "!merges" || key === "!margins") return;
+      let col = 0,
+        row = 0;
+      const colString = key.replace(/[^a-zA-Z]+/g, "");
+      colString.split("").map((char) => {
+        col += char.charCodeAt(0) - 65;
+      });
+      const rowString = key.replace(/[^0-9]+/g, "");
+      row = parseInt(rowString - 1);
+      if (col < minColumn || minColumn === undefined) minColumn = col;
+      else if (col > maxColumn || maxColumn === undefined) maxColumn = col;
+      if (row < minRow || minRow === undefined) minRow = row;
+      else if (row > maxRow || maxRow === undefined) maxRow = row;
+    });
+  };
+
+  const setValues = (sheet) => {
+    Object.entries(sheet).map(([key, value]) => {
+      if (key === "!ref" || key === "!merges" || key === "!margins") return;
+      let col = 0,
+        row = 0;
+      const colString = key.replace(/[^a-zA-Z]+/g, "");
+      colString.split("").map((char) => {
+        col += char.charCodeAt(0) - 65;
+      });
+      const rowString = key.replace(/[^0-9]+/g, "");
+      row = parseInt(rowString - 1);
+      cells[row - minRow][col - minColumn] = value.w;
+    });
   };
 
   const emptyRow = (row) => {
@@ -118,11 +130,11 @@ const ImportExcel = ({
         className="opacity-0 -z-99 absolute"
         onChange={handleFileUpload}
         ref={inputRef}
+        name="import"
       />
-
       {modalVisible && (
         <div
-          className={`fixed mt-18 inset-0 flex items-center justify-center ${
+          className={`fixed mt-18 flex items-center justify-center ${
             modalVisible
               ? "opacity-100 z-50 animate-fade"
               : "opacity-0 -z-50 animate-fadeOut"
@@ -131,7 +143,7 @@ const ImportExcel = ({
           <div
             className={`relative ${
               modalVisible ? "opacity-100 z-50" : "opacity-0 -z-50"
-            } bg-white p-8 rounded-md w-150 ml-24 md:w-80`}
+            } bg-white p-8 rounded-md w-130 ml-24 md:w-80`}
           >
             <div className="flex gap-4 items-center bg-slate-100 mt-3 rounded-lg text-xl text-center font-medium">
               <FontAwesomeIcon
@@ -139,19 +151,19 @@ const ImportExcel = ({
                 size="2xl"
                 className="text-zinc-400"
               />
-              <h1 className="italic text-black">
+              <h1 className="font-bold text-black">
                 The file you chose has more than one sheet!
               </h1>
             </div>
 
-            <h2 className="mt-8">
+            <h2 className="mt-8 font-medium">
               Please select which sheet you want to import:
             </h2>
             <ul className="mt-2">
               {sheetNames.map((sheet) => (
                 <li
                   key={sheet}
-                  className="font-medium bg-slate-50 border-2 border-slate-200 mb-1 hover:bg-black hover:text-white cursor-pointer"
+                  className="font-medium px-2 bg-slate-50 border-2 border-slate-200 mb-1 hover:bg-black hover:text-white cursor-pointer"
                   onClick={() => handleSheetChange(sheet)}
                 >
                   <button>{sheet}</button>

@@ -50,8 +50,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
     case "Products":
       icon = faBarcode;
       break;
-    case "View":
-    case "":
+    default:
       icon = faList;
       break;
   }
@@ -88,6 +87,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
       } else if (destination !== view) {
         successToast("edited");
       }
+      localStorage.setItem(destination, []);
     }
   };
 
@@ -167,6 +167,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
               checkValue(value);
             }}
             ref={inputRef}
+            name={destination}
             className={`bg-transparent outline-none ${
               !edit && "cursor-pointer"
             }`}

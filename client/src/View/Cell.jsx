@@ -12,7 +12,7 @@ const Cell = ({ value, index, rowIndex, handleChange, rowLength }) => {
       : value;
 
   return (
-    <div className={`relative `}>
+    <div className={`w-full relative`}>
       <input
         type="text"
         defaultValue={newValue}
@@ -31,8 +31,9 @@ const Cell = ({ value, index, rowIndex, handleChange, rowLength }) => {
           handleChange(e.target.value, index, rowIndex);
           setEdited(false);
         }}
+        name={newValue || "empty cell"}
       />
-      {newValue.toString().length >= 20 && hover && (
+      {newValue !== undefined && newValue.toString().length >= 20 && hover && (
         <div
           className={`absolute ${
             index >= rowLength - 5 && "mb-16"
