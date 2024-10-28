@@ -98,6 +98,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
       toastId.current = toast.info("Successfully deleted!", toastStyle);
       setViews(views.filter((v) => v.dest !== view));
       setModalVisible(false);
+      localStorage.removeItem(view);
       navigate("/", { replace: true });
     }, 500);
   };

@@ -22,15 +22,15 @@ const App = () => {
   ]);
   const searchRef = useRef();
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   useEffect(() => {
     document.addEventListener("keyup", (e) => {
       if (e.key === "/") searchRef.current.focus();
     });
   }, []);
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   return (
     <div className="w-full h-screen flex relative overflow-hidden">

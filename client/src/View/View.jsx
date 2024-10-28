@@ -18,18 +18,25 @@ import Sort from "../components/Sort";
 
 const View = ({ type, data, setData, created, deleted }) => {
   const [chartData, setChartData] = useState([]);
+  const [formattedData, setFormattedData] = useState([]);
+  const [copyData, setCopyData] = useState([]);
   const [dataTypes, setDataTypes] = useState(undefined);
   const [fileSelected, setFileSelected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fileImported, setFileImported] = useState(false);
   const [columns, setColumns] = useState([]);
   const [view, setView] = useState("Data");
+  const [sort, setSort] = useState(false);
+  const [operation, setOperation] = useState("Total");
+  const [xAxisKey, setXAxisKey] = useState("");
+  const [yAxisKey, setYAxisKey] = useState("");
   const [deletedRow, setDeletedRow] = useState(undefined);
   const inputRef = useRef();
   const views = ["Data", "Charts"];
 
   useEffect(() => {
     let localData = localStorage.getItem(type);
+    setSort(false);
     if (localData !== null && localData !== undefined && localData !== "") {
       localData = JSON.parse(localData);
       setData(localData);
@@ -40,7 +47,9 @@ const View = ({ type, data, setData, created, deleted }) => {
       setData([]);
       setColumns([]);
       setChartData([]);
+      setFormattedData([]);
       setDataTypes([]);
+      setCopyData([]);
     }
     moment().format();
   }, [type]);
@@ -49,6 +58,7 @@ const View = ({ type, data, setData, created, deleted }) => {
     if (data.length > 0) {
       setColumns(data[0]);
       inferDataTypes(data);
+      arrayToObjectData(data);
     }
   }, [data]);
 
@@ -186,35 +196,46 @@ const View = ({ type, data, setData, created, deleted }) => {
             })}
           </h1>
           <div className="flex items-center gap-4">
-            {dataTypes !== undefined && (
+            {data.length > 0 && dataTypes !== undefined && (
               <Sort
                 columns={columns}
+                view={view}
                 data={data}
                 setData={setData}
+                chartData={formattedData}
+                setChartData={setFormattedData}
                 dataTypes={dataTypes}
+                setSort={setSort}
+                xAxisKey={xAxisKey}
+                yAxisKey={yAxisKey}
+                operation={operation}
+                setFormattedData={setFormattedData}
+                copyData={copyData}
               />
             )}
-            <div
-              className="p-1 flex bg-slate-200 rounded-md items-center gap-1 animate-fade [animation-fill-mode:backwards]"
-              style={{ animationDelay: "0.5s" }}
-            >
-              {views.map((chart, index) => {
-                return (
-                  <button
-                    className={`px-3 py-1 font-medium rounded-md ${
-                      view === chart
-                        ? "bg-black text-white"
-                        : "bg-white text-black"
-                    } animate-slideDown [animation-fill-mode:backwards] duration-500`}
-                    onClick={() => setView(chart)}
-                    style={{ animationDelay: index * 0.25 + 0.75 + "s" }}
-                    key={"View-" + chart}
-                  >
-                    {chart}
-                  </button>
-                );
-              })}
-            </div>
+            {data.length > 0 && (
+              <div
+                className="p-1 flex bg-slate-200 rounded-md items-center gap-1 animate-fade [animation-fill-mode:backwards]"
+                style={{ animationDelay: "0.5s" }}
+              >
+                {views.map((chart, index) => {
+                  return (
+                    <button
+                      className={`px-3 py-1 font-medium rounded-md ${
+                        view === chart
+                          ? "bg-black text-white"
+                          : "bg-white text-black"
+                      } animate-slideDown [animation-fill-mode:backwards] duration-500`}
+                      onClick={() => setView(chart)}
+                      style={{ animationDelay: index * 0.25 + 0.75 + "s" }}
+                      key={"View-" + chart}
+                    >
+                      {chart}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <button
               className="px-3 py-2 flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
               style={{ animationDelay: "0.5s" }}
@@ -249,8 +270,22 @@ const View = ({ type, data, setData, created, deleted }) => {
             />
             {loading ? (
               <p className={`text-black font-bold`}>Loading...</p>
-            ) : fileSelected && (data.length === 0 || data[0].length === 0) ? (
-              <p className={`text-red-500 font-bold`}>No data to display</p>
+            ) : data.length === 0 || data[0].length === 0 ? (
+              <div className="w-full flex justify-center mt-40">
+                {fileSelected ? (
+                  <p
+                    className={`text-red-500 absolute margin-auto text-2xl font-bold`}
+                  >
+                    No data to display
+                  </p>
+                ) : (
+                  <p
+                    className={`text-black absolute margin-auto text-2xl font-bold`}
+                  >
+                    So empty...
+                  </p>
+                )}
+              </div>
             ) : (
               data.map((element, index) => {
                 if (index === 0) return;
@@ -270,7 +305,21 @@ const View = ({ type, data, setData, created, deleted }) => {
             )}
           </div>
         ) : (
-          <Chart data={chartData} />
+          <Chart
+            title={type}
+            data={chartData}
+            formattedData={formattedData}
+            setFormattedData={setFormattedData}
+            dataTypes={dataTypes}
+            sort={sort}
+            setCopyData={setCopyData}
+            xAxisKey={xAxisKey}
+            setXAxisKey={setXAxisKey}
+            yAxisKey={yAxisKey}
+            setYAxisKey={setYAxisKey}
+            operation={operation}
+            setOperation={setOperation}
+          />
         )}
       </div>
     </div>
