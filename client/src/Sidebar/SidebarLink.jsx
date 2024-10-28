@@ -50,8 +50,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
     case "Products":
       icon = faBarcode;
       break;
-    case "View":
-    case "":
+    default:
       icon = faList;
       break;
   }
@@ -88,6 +87,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
       } else if (destination !== view) {
         successToast("edited");
       }
+      localStorage.setItem(destination, []);
     }
   };
 
@@ -98,6 +98,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
       toastId.current = toast.info("Successfully deleted!", toastStyle);
       setViews(views.filter((v) => v.dest !== view));
       setModalVisible(false);
+      localStorage.removeItem(view);
       navigate("/", { replace: true });
     }, 500);
   };
@@ -167,6 +168,7 @@ const SidebarLink = ({ destination, created, views, setViews, index }) => {
               checkValue(value);
             }}
             ref={inputRef}
+            name={destination}
             className={`bg-transparent outline-none ${
               !edit && "cursor-pointer"
             }`}

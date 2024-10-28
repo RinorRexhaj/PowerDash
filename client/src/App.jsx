@@ -13,6 +13,8 @@ import View from "./View/View";
 
 const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [data, setData] = useState([]);
+  const [searchData, setSearchData] = useState([]);
   const [search, setSearch] = useState("");
   const [views, setViews] = useState([
     { dest: "Dashboard" },
@@ -20,15 +22,15 @@ const App = () => {
   ]);
   const searchRef = useRef();
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   useEffect(() => {
     document.addEventListener("keyup", (e) => {
       if (e.key === "/") searchRef.current.focus();
     });
   }, []);
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   return (
     <div className="w-full h-screen flex relative overflow-hidden">
@@ -54,7 +56,14 @@ const App = () => {
                 return (
                   <Route
                     path={`/${view.dest.toLowerCase()}`}
-                    element={<View type={view.dest} key={view.dest} />}
+                    element={
+                      <View
+                        type={view.dest}
+                        data={data}
+                        setData={setData}
+                        key={view.dest}
+                      />
+                    }
                     key={view.dest}
                     created={view.created}
                   />

@@ -26,22 +26,6 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
 
-  const toggleMenu = () => {
-    setMenu(!menu);
-  };
-
-  const toggleChat = () => {
-    setChat(!chat);
-  };
-
-  const openModal = () => {
-    setModalVisible(true);
-  };
-
-  const closeModal = () => {
-    setModalVisible(false);
-  };
-
   useEffect(() => {
     if (chat) setNotifications([]);
   }, [chat]);
@@ -74,6 +58,22 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
     };
   }, [modalVisible]);
 
+  const toggleMenu = () => {
+    setMenu(!menu);
+  };
+
+  const toggleChat = () => {
+    setChat(!chat);
+  };
+
+  const openModal = () => {
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+  };
+
   return (
     <nav className="w-full flex items-center justify-between mb-4 min-h-25 shadow-4 pl-7 pr-4 bg-white">
       <FontAwesomeIcon
@@ -94,6 +94,8 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
           className={`outline-none px-1 py-3 w-7/12 border-b-2 border-slate-200 focus:border-slate-400 duration-200 opacity-100 transition-width`}
           defaultValue={search}
           ref={searchRef}
+          name="search"
+          onChange={(e) => searchFilter(e.target.value)}
           onFocus={() => setInputFocused(true)}
           onBlur={() => setInputFocused(false)}
         />

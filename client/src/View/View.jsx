@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
+  faAngleDown,
+  faAngleUp,
   faArrowDown,
   faArrowDown19,
   faArrowDownAZ,
@@ -7,31 +9,126 @@ import {
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import moment from "moment";
 import Row from "./Row";
 import Columns from "./Columns";
 import ImportExcel from "../components/ImportExcel";
 import Chart from "../Charts/Chart";
+import Sort from "../components/Sort";
 
-const View = ({ type, created, deleted }) => {
-  const [data, setData] = useState([]);
+const View = ({ type, data, setData, created, deleted }) => {
   const [chartData, setChartData] = useState([]);
+  const [formattedData, setFormattedData] = useState([]);
+  const [copyData, setCopyData] = useState([]);
+  const [dataTypes, setDataTypes] = useState(undefined);
   const [fileSelected, setFileSelected] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [fileImported, setFileImported] = useState(false);
-  const [minCol, setMinCol] = useState();
+  const [columns, setColumns] = useState([]);
   const [view, setView] = useState("Data");
+  const [sort, setSort] = useState(false);
+  const [operation, setOperation] = useState("Total");
+  const [xAxisKey, setXAxisKey] = useState("");
+  const [yAxisKey, setYAxisKey] = useState("");
+  const [deletedRow, setDeletedRow] = useState(undefined);
   const inputRef = useRef();
+  const views = ["Data", "Charts"];
 
   useEffect(() => {
     let localData = localStorage.getItem(type);
-    if (localData !== null) {
+    setSort(false);
+    if (localData !== null && localData !== undefined && localData !== "") {
       localData = JSON.parse(localData);
       setData(localData);
+      setColumns(localData[0]);
       arrayToObjectData(localData);
+      inferDataTypes(localData);
+    } else {
+      setData([]);
+      setColumns([]);
+      setChartData([]);
+      setFormattedData([]);
+      setDataTypes([]);
+      setCopyData([]);
     }
-  }, []);
+    moment().format();
+  }, [type]);
+
+  useEffect(() => {
+    if (data.length > 0) {
+      setColumns(data[0]);
+      inferDataTypes(data);
+      arrayToObjectData(data);
+    }
+  }, [data]);
+
+  const inferDataTypes = (data) => {
+    const headers = data[0];
+    const types = {};
+
+    headers.forEach((header) => {
+      types[header] = [];
+    });
+
+    const isNumber = (value) => {
+      if (value === undefined || value.trim() === "") return false;
+      const cleanValue = value.replace(/[$,€]/g, "");
+      return !isNaN(parseFloat(cleanValue)) && isFinite(cleanValue);
+    };
+
+    const isDate = (value) => {
+      const valString = value.split(" ");
+      let invalidString = !isNumber(valString[0]) && isNumber(valString[1]);
+      const m = moment(value);
+      return m.isValid() && !invalidString;
+    };
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      row.forEach((value, index) => {
+        if (value.trim() === "") {
+          return;
+        }
+        if (isNumber(value)) {
+          types[headers[index]].push("number");
+        } else if (isDate(value)) {
+          types[headers[index]].push("date");
+        } else {
+          types[headers[index]].push("string");
+        }
+      });
+    }
+
+    const inferredTypes = {};
+    for (const header in types) {
+      const counts = {};
+      types[header].forEach((type) => {
+        counts[type] = (counts[type] || 0) + 1;
+      });
+
+      let dominantType = "string";
+      let maxCount = 0;
+      for (const type in counts) {
+        if (counts[type] > maxCount) {
+          dominantType = type;
+          maxCount = counts[type];
+        }
+      }
+      inferredTypes[header] = dominantType;
+    }
+    setDataTypes(inferredTypes);
+  };
 
   const openInput = () => {
     inputRef.current.click();
+  };
+
+  const deleteRow = (row) => {
+    setDeletedRow(row);
+    setTimeout(() => {
+      setData(data.filter((r, index) => row !== index));
+      setDeletedRow(-1);
+    }, 400);
   };
 
   const handleChange = (value, cell, index) => {
@@ -99,33 +196,46 @@ const View = ({ type, created, deleted }) => {
             })}
           </h1>
           <div className="flex items-center gap-4">
-            <div
-              className="p-1 flex bg-slate-200 rounded-md items-center gap-1 animate-fade [animation-fill-mode:backwards]"
-              style={{ animationDelay: "0.5s" }}
-            >
-              <button
-                className={`px-3 py-1 font-medium rounded-md ${
-                  view === "Data"
-                    ? "bg-black text-white"
-                    : "bg-white text-black"
-                } animate-slideDown [animation-fill-mode:backwards] duration-500`}
-                onClick={() => setView("Data")}
-                style={{ animationDelay: "0.75s" }}
+            {data.length > 0 && dataTypes !== undefined && (
+              <Sort
+                columns={columns}
+                view={view}
+                data={data}
+                setData={setData}
+                chartData={formattedData}
+                setChartData={setFormattedData}
+                dataTypes={dataTypes}
+                setSort={setSort}
+                xAxisKey={xAxisKey}
+                yAxisKey={yAxisKey}
+                operation={operation}
+                setFormattedData={setFormattedData}
+                copyData={copyData}
+              />
+            )}
+            {data.length > 0 && (
+              <div
+                className="p-1 flex bg-slate-200 rounded-md items-center gap-1 animate-fade [animation-fill-mode:backwards]"
+                style={{ animationDelay: "0.5s" }}
               >
-                Data
-              </button>
-              <button
-                className={`px-3 py-1 font-medium rounded-md ${
-                  view === "Charts"
-                    ? "bg-black text-white"
-                    : "bg-white text-black"
-                } animate-slideDown [animation-fill-mode:backwards]  duration-300`}
-                onClick={() => setView("Charts")}
-                style={{ animationDelay: "1s" }}
-              >
-                Charts
-              </button>
-            </div>
+                {views.map((chart, index) => {
+                  return (
+                    <button
+                      className={`px-3 py-1 font-medium rounded-md ${
+                        view === chart
+                          ? "bg-black text-white"
+                          : "bg-white text-black"
+                      } animate-slideDown [animation-fill-mode:backwards] duration-500`}
+                      onClick={() => setView(chart)}
+                      style={{ animationDelay: index * 0.25 + 0.75 + "s" }}
+                      key={"View-" + chart}
+                    >
+                      {chart}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <button
               className="px-3 py-2 flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
               style={{ animationDelay: "0.5s" }}
@@ -139,41 +249,77 @@ const View = ({ type, created, deleted }) => {
         <span className="w-full sticky top-15 z-50 h-[1px] bg-slate-200"></span>
         {view === "Data" ? (
           <div>
-            <Columns
-              data={data[0]}
-              formatColumn={formatColumn}
-              minCol={minCol}
-              handleChange={handleChange}
-            />
+            {data.length > 0 && columns.length > 0 && (
+              <Columns
+                data={data}
+                setData={setData}
+                columns={columns}
+                setColumns={setColumns}
+                formatColumn={formatColumn}
+                handleChange={handleChange}
+              />
+            )}
             <span className="w-full h-[0.5px] bg-slate-200"></span>
             <ImportExcel
               type={type}
               setData={setData}
               setFileSelected={setFileSelected}
               setFileImported={setFileImported}
+              setLoading={setLoading}
               inputRef={inputRef}
-              setMinCol={setMinCol}
             />
-            {fileSelected && data.length === 0 ? (
-              <p className="text-red-500 font-bold">No data to display</p>
+            {loading ? (
+              <p className={`text-black font-bold`}>Loading...</p>
+            ) : data.length === 0 || data[0].length === 0 ? (
+              <div className="w-full flex justify-center mt-40">
+                {fileSelected ? (
+                  <p
+                    className={`text-red-500 absolute margin-auto text-2xl font-bold`}
+                  >
+                    No data to display
+                  </p>
+                ) : (
+                  <p
+                    className={`text-black absolute margin-auto text-2xl font-bold`}
+                  >
+                    So empty...
+                  </p>
+                )}
+              </div>
             ) : (
               data.map((element, index) => {
                 if (index === 0) return;
+                const obj = Object.entries(element);
                 return (
                   <Row
                     element={element}
                     index={index}
-                    key={Object.keys(element)[0] + index}
+                    key={obj[0][1] + index}
                     handleChange={handleChange}
+                    deleteRow={deleteRow}
+                    deletedRow={deletedRow}
                     rowLength={data.length}
-                    minCol={minCol}
                   />
                 );
               })
             )}
           </div>
         ) : (
-          <Chart data={chartData} />
+          <Chart
+            title={type}
+            data={chartData}
+            formattedData={formattedData}
+            setFormattedData={setFormattedData}
+            dataTypes={dataTypes}
+            sort={sort}
+            setCopyData={setCopyData}
+            xAxisKey={xAxisKey}
+            setXAxisKey={setXAxisKey}
+            yAxisKey={yAxisKey}
+            setYAxisKey={setYAxisKey}
+            operation={operation}
+            setOperation={setOperation}
+          />
         )}
       </div>
     </div>
