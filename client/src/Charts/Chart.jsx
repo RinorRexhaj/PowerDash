@@ -3,8 +3,13 @@ import { CartesianGrid, Cell, Tooltip, XAxis, YAxis } from "recharts";
 import axios from "axios";
 import BarsChart from "./BarsChart";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChartLine, faImage } from "@fortawesome/free-solid-svg-icons";
-import { useCurrentPng } from "recharts-to-png";
+import {
+  faChartLine,
+  faImage,
+  faWandMagicSparkles,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { useGenerateImage } from "recharts-to-png";
 import FileSaver from "file-saver";
 
 const Chart = ({
@@ -27,11 +32,17 @@ const Chart = ({
   const [timePeriod, setTimePeriod] = useState(false);
   const [timeData, setTimeData] = useState([]);
   const [periods, setPeriods] = useState("Monthly");
+  const [createWithAI, setCreateWithAI] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [average, setAverage] = useState(0);
   const [trendLine, setTrendLine] = useState(false);
   const chartTypes = ["Bar", "Pie", "Scatter"];
   const operations = ["Total", "Average"];
   const timePeriods = ["Daily", "Weekly", "Monthly", "Yearly"];
-  const [getPng, { ref, isLoading }] = useCurrentPng();
+  const [getPng, { ref }] = useGenerateImage({
+    quality: 0.8,
+    type: "image/png",
+  });
   const groupings = {
     Daily: (date) => date.toISOString().split("T")[0],
     Weekly: (date) => {
@@ -46,6 +57,7 @@ const Chart = ({
     Yearly: (date) => `${date.getFullYear()}`,
   };
   const trendLineInput = useRef(null);
+  const createWithAIRef = useRef(null);
 
   useEffect(() => {
     if (data && data.length > 0) {
@@ -114,6 +126,9 @@ const Chart = ({
     if (initialData.length === 0) {
       initialData = newData;
     }
+    if (total === 0 && average === 0) {
+      calculateTotalAverage(formattedData);
+    }
     setFormattedData(newData);
     setCopyData(newData);
   };
@@ -164,6 +179,20 @@ const Chart = ({
         [avgProp]: item.sum / item.count,
       }))
       .map(({ sum, count, ...rest }) => rest);
+  };
+
+  const calculateTotalAverage = (data) => {
+    let total = 0,
+      average = 0;
+    [...data].forEach((row) => {
+      if (row[yAxisKey] !== undefined) {
+        total += row[yAxisKey];
+        average += row[yAxisKey];
+      }
+    });
+    average /= data.length;
+    setTotal(total.toFixed(2));
+    setAverage(average.toFixed(2));
   };
 
   const groupByTimePeriod = (data, period) => {
@@ -232,7 +261,7 @@ const Chart = ({
   }, [getPng]);
 
   return (
-    <div className="py-6">
+    <div className="py-4">
       <div className="px-6 flex items-center gap-3 mb-4">
         <label className="font-medium">Chart Type: </label>
         <select
@@ -262,32 +291,68 @@ const Chart = ({
             );
           })}
         </select>
-        <label className="font-medium">Trend Line: </label>
-        <input
-          type="checkbox"
-          name="trendline"
-          id="trendline"
-          ref={trendLineInput}
-          onClick={() => {
-            setTrendLine(!trendLine);
-          }}
-          className="w-4 h-4 cursor-pointer"
-        />
-        <button
-          className="absolute right-8 px-3 py-2 flex items-center justify-center gap-2 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
-          style={{ animationDelay: "0.2s" }}
-          onClick={() => chartToImage()}
-        >
-          <FontAwesomeIcon icon={faImage} />
-          Save as Image
-        </button>{" "}
-        <button
-          className="absolute right-8 top-32 px-3 py-2 flex items-center justify-center gap-2 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
-          style={{ animationDelay: "0.3s" }}
-        >
-          <FontAwesomeIcon icon={faChartLine} />
-          Generate Report
-        </button>{" "}
+        <div className="absolute top-20 right-8 flex gap-3">
+          <div
+            className={`relative ${
+              createWithAI
+                ? "h-19 items-start"
+                : "h-9 items-center cursor-pointer"
+            } flex justify-center rounded-md  overflow-hidden duration-300`}
+            onClick={() => {
+              if (!createWithAI) {
+                setCreateWithAI(true);
+                setTimeout(() => {
+                  createWithAIRef.current.focus();
+                }, 500);
+              }
+            }}
+          >
+            <textarea
+              className={`h-full w-full resize-none px-3 py-2 flex items-center align-top gap-2 text-sm text-white font-medium outline-none overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 hover:bg-gradient-to-r hover:from-violet-700 hover:to-indigo-700 duration-300 animate-slideDown [animation-fill-mode:backwards] caret-white placeholder:text-slate-300`}
+              ref={createWithAIRef}
+              placeholder={createWithAI && "Write your prompt..."}
+            />
+            <p
+              className={`absolute margin-auto z-99 text-sm text-white flex gap-1 items-center ${
+                createWithAI
+                  ? "animate-slideOut opacity-0"
+                  : "animate-slideIn opacity-100"
+              } [animation-fill-mode:backwards]`}
+            >
+              <FontAwesomeIcon icon={faWandMagicSparkles} />
+              Create with AI
+            </p>
+            <button
+              onClick={(e) => {
+                setCreateWithAI(false);
+                e.stopPropagation();
+                createWithAIRef.current.blur();
+              }}
+              className={`absolute top-1 right-1 w-4 h-4 p-1 flex items-center justify-center rounded-full bg-white ${
+                createWithAI ? "z-99 opacity-80" : "-z-99 opacity-0"
+              }`}
+            >
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <button
+              className="px-3 py-2 flex items-center gap-2 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
+              style={{ animationDelay: "0.2s" }}
+              onClick={() => chartToImage()}
+            >
+              <FontAwesomeIcon icon={faImage} />
+              Save as Image
+            </button>{" "}
+            <button
+              className="px-3 py-2 flex items-center gap-2 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
+              style={{ animationDelay: "0.3s" }}
+            >
+              <FontAwesomeIcon icon={faChartLine} />
+              Generate Report
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="px-6 flex items-center gap-4 mb-4 font-medium">
@@ -348,6 +413,9 @@ const Chart = ({
           formattedData={formattedData}
           xAxisKey={xAxisKey}
           yAxisKey={yAxisKey}
+          operation={operation}
+          total={total}
+          average={average}
           trendLine={trendLine}
           dataTypes={dataTypes}
           groupings={groupings}
