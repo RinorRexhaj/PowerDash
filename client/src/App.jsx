@@ -49,7 +49,7 @@ const App = () => {
             searchRef={searchRef}
           />
           <div className="w-full h-full overflow-y-auto z-0 -mt-[74px] py-6 px-8 sm:px-6 bg-slate-100">
-            <div className="w-full absolute top-25.5 left-0 h-6 bg-slate-100 z-99"></div>
+            <div className="w-full absolute top-22.5 left-0 h-6 bg-slate-100 z-99"></div>
             <Routes>
               <Route path="/" element={<h1>PowerDash</h1>} />
               {views.map((view) => {

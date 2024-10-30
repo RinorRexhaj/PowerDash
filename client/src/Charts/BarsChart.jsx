@@ -20,6 +20,9 @@ const BarsChart = ({
   formattedData,
   xAxisKey,
   yAxisKey,
+  operation,
+  total,
+  average,
   trendLine,
   dataTypes,
   chartRef,
@@ -41,46 +44,50 @@ const BarsChart = ({
     "#a05195",
   ];
 
-  const trendData = () => {
-    const data = timePeriod ? [...timeData] : [...formattedData];
-    const xKey = [...data].map((data) => data[xAxisKey]);
-    const yKey = [...data].map((data) => data[yAxisKey]);
-    let xMax, xMin;
-    const dataType = dataTypes[xAxisKey];
-    const yMax = Math.max(...yKey);
-    const yMin = Math.min(...yKey);
-    if (dataType === "number" || dataType === "date") {
-      xMax = Math.max(...xKey);
-      xMin = Math.min(...xKey);
-      // if (dataType === "date") {
-      //   xMax = groupings[periods](xMax);
-      //   xMin = groupings[periods](xMin);
-      // }
-    } else if (dataType === "string") {
-      xMax = xKey.reduce((max, c) => (c > max ? c : max));
-      xMin = xKey.reduce((min, c) => (c < min ? c : min));
-    }
-    const trend = createTrend(data, xAxisKey, yAxisKey);
+  // const trendData = () => {
+  //   const data = timePeriod ? [...timeData] : [...formattedData];
+  //   const xKey = [...data].map((data) => data[xAxisKey]);
+  //   const yKey = [...data].map((data) => data[yAxisKey]);
+  //   let xMax, xMin;
+  //   const dataType = dataTypes[xAxisKey];
+  //   const yMax = Math.max(...yKey);
+  //   const yMin = Math.min(...yKey);
+  //   if (dataType === "number" || dataType === "date") {
+  //     xMax = Math.max(...xKey);
+  //     xMin = Math.min(...xKey);
+  //     // if (dataType === "date") {
+  //     //   xMax = groupings[periods](xMax);
+  //     //   xMin = groupings[periods](xMin);
+  //     // }
+  //   } else if (dataType === "string") {
+  //     xMax = xKey.reduce((max, c) => (c > max ? c : max));
+  //     xMin = xKey.reduce((min, c) => (c < min ? c : min));
+  //   }
+  //   const trend = createTrend(data, xAxisKey, yAxisKey);
 
-    const segment = [
-      {
-        x: xMin,
-        y: Math.abs(trend.calcY(xMin)),
-      },
-      {
-        x: xMax,
-        y: Math.abs(trend.calcY(xMax)),
-      },
-    ];
-    return segment;
-  };
+  //   const segment = [
+  //     {
+  //       x: xMin,
+  //       y: Math.abs(trend.calcY(xMin)),
+  //     },
+  //     {
+  //       x: xMax,
+  //       y: Math.abs(trend.calcY(xMax)),
+  //     },
+  //   ];
+  //   return segment;
+  // };
 
   return (
-    <ResponsiveContainer className="p-2 relative" width="100%" height={450}>
+    <ResponsiveContainer
+      className="p-2 relative"
+      width="100%"
+      height={450}
+      ref={chartRef}
+    >
       <ComposedChart
         data={timePeriod ? timeData : formattedData}
         margin={{ top: 20, right: 30, left: 25, bottom: 20 }}
-        ref={chartRef}
       >
         <CartesianGrid strokeDasharray="4 4" />
         <XAxis
@@ -112,7 +119,7 @@ const BarsChart = ({
             <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
           ))}
         </Bar>
-        {trendLine && (
+        {/* {trendLine && (
           <ReferenceLine
             className={`${!trendLine ? "animate-fade" : "animate-fadeOut"}`}
             stroke="black"
@@ -120,8 +127,11 @@ const BarsChart = ({
             strokeDasharray="7 7"
             segment={trendData()}
           />
-        )}
+        )} */}
       </ComposedChart>
+      <div className="absolute px-2 py-1 top-7 right-9 bg-white border border-slate-400 font-medium">{`${operation}: ${
+        operation === "Total" ? total : average
+      }`}</div>
     </ResponsiveContainer>
   );
 };

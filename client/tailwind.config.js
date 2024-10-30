@@ -264,9 +264,9 @@ module.exports = {
           "100%": { opacity: "1", transform: "translateX(0)" },
         },
         slideOut: {
-          "0%": { opacity: "0", transform: "translateX(0%)" },
-          "60%": { opacity: "0.5" },
-          "100%": { opacity: "1", transform: "translateX(100%)" },
+          "0%": { opacity: "1", transform: "translateX(0%)" },
+          "40%": { opacity: "0.5" },
+          "100%": { opacity: "0", transform: "translateX(100%)" },
         },
         slideDown: {
           "0%": { opacity: "0", transform: "translateY(-70%)" },

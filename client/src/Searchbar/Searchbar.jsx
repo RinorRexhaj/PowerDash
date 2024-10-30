@@ -75,7 +75,7 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
   };
 
   return (
-    <nav className="w-full flex items-center justify-between mb-4 min-h-25 shadow-4 pl-7 pr-4 bg-white">
+    <nav className="w-full flex items-center justify-between mb-4 min-h-22 shadow-4 pl-7 pr-4 bg-white">
       <FontAwesomeIcon
         icon={faBars}
         className="cursor-pointer hidden tb:block w-6 h-6 absolute z-10"
