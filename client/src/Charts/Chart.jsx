@@ -6,7 +6,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChartLine,
   faImage,
-  faWandMagicSparkles,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { useGenerateImage } from "recharts-to-png";
@@ -33,30 +32,31 @@ const Chart = ({
   const [timeData, setTimeData] = useState([]);
   const [periods, setPeriods] = useState("Monthly");
   const [createWithAI, setCreateWithAI] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
   const [total, setTotal] = useState(0);
   const [average, setAverage] = useState(0);
   const [trendLine, setTrendLine] = useState(false);
   const chartTypes = ["Bar", "Pie", "Scatter"];
   const operations = ["Total", "Average"];
-  const timePeriods = ["Daily", "Weekly", "Monthly", "Yearly"];
+  const timePeriods = ["Daily", "Monthly", "Quarterly", "Yearly"];
   const [getPng, { ref }] = useGenerateImage({
     quality: 0.8,
     type: "image/png",
   });
   const groupings = {
     Daily: (date) => date.toISOString().split("T")[0],
-    Weekly: (date) => {
-      const startOfWeek = new Date(date);
-      const day = startOfWeek.getDay();
-      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-      startOfWeek.setDate(diff);
-      startOfWeek.setHours(0, 0, 0, 0);
-      return startOfWeek.toISOString().split("T")[0];
-    },
     Monthly: (date) => `${date.toLocaleString("default", { month: "short" })}`,
+    Quarterly: (date) => {
+      const month = new Date(date).getMonth();
+      if (month >= 0 && month <= 2) return "Q1";
+      else if (month >= 3 && month <= 5) return "Q2";
+      else if (month >= 6 && month <= 8) return "Q3";
+      return "Q4";
+    },
     Yearly: (date) => `${date.getFullYear()}`,
   };
-  const trendLineInput = useRef(null);
+  // const trendLineInput = useRef(null);
   const createWithAIRef = useRef(null);
 
   const colors = [
@@ -216,9 +216,6 @@ const Chart = ({
 
   const groupByTimePeriod = (data, period) => {
     const groupBy = groupings[period];
-    const xKey = [...data].map((val) => val[xAxisKey]);
-    const minDate = Math.min(...xKey);
-    const maxDate = Math.max(...xKey);
     let groupedData = data.reduce((acc, item) => {
       const date = new Date(item[xAxisKey]);
       const key = groupBy(date);
@@ -233,13 +230,17 @@ const Chart = ({
       }
       return acc;
     }, []);
-    if (period !== "Monthly") {
+    if (period === "Monthly") {
+      groupedData = sortAndCompleteMonths(groupedData);
+    } else if (period === "Quarterly") {
+      groupedData = sortAndCompleteQuarters(groupedData);
+    } else if (period === "Yearly") {
+      groupedData = sortAndCompleteYears(groupedData);
+    } else {
       groupedData.sort(
         (a, b) =>
           new Date(a[xAxisKey]).getTime() - new Date(b[xAxisKey]).getTime()
       );
-    } else {
-      groupedData = sortAndCompleteMonths(groupedData);
     }
     setTimeData(groupedData);
   };
@@ -272,6 +273,46 @@ const Chart = ({
     );
   };
 
+  const sortAndCompleteQuarters = (data) => {
+    const quarterOrder = ["Q1", "Q2", "Q3", "Q4"];
+    const quarters = new Set(data[xAxisKey]);
+    quarterOrder.forEach((quarter) => {
+      let q = data.find((m) => m[xAxisKey] === quarter);
+      quarters.add({
+        [xAxisKey]: quarter,
+        [yAxisKey]: q === undefined ? 0 : q[yAxisKey],
+      });
+    });
+    return Array.from(quarters).sort(
+      (a, b) => quarterOrder.indexOf(a) - quarterOrder.indexOf(b)
+    );
+  };
+
+  const sortAndCompleteYears = (data) => {
+    const minYear = Math.min(...data.map((item) => item[xAxisKey]));
+    const maxYear = Math.max(...data.map((item) => item[xAxisKey]));
+    const years = new Set(data[xAxisKey]);
+    for (let i = minYear; i <= maxYear; i++) {
+      let y = data.find((y) => y[xAxisKey] == i);
+      years.add({
+        [xAxisKey]: i,
+        [yAxisKey]: y === undefined ? 0 : y[yAxisKey],
+      });
+    }
+    return Array.from(years).sort((a, b) => a[xAxisKey] - b[xAxisKey]);
+  };
+
+  const analyzePrompt = async () => {
+    createWithAIRef.current.blur();
+    setCreateWithAI(false);
+    setPrompt("");
+    setAnalyzing(true);
+    await axios.post("http://127.0.0.1:5000/", { prompt }).then((res) => {
+      console.log(res.data);
+    });
+    setAnalyzing(false);
+  };
+
   const chartToImage = useCallback(async () => {
     const png = await getPng();
     if (png) {
@@ -282,9 +323,12 @@ const Chart = ({
   return (
     <div className="py-4">
       <div className="px-6 flex items-center gap-3 mb-4">
-        <label className="font-medium">Chart Type: </label>
+        <label htmlFor="type" className="font-medium">
+          Chart Type:{" "}
+        </label>
         <select
           className="relative flex border-4 border-slate-200 font-medium rounded-md cursor-pointer"
+          id="type"
           onChange={(e) => setChartType(e.target.value)}
           value={chartType}
         >
@@ -296,9 +340,12 @@ const Chart = ({
             );
           })}
         </select>
-        <label className="font-medium">Operation: </label>
+        <label htmlFor="operation" className="font-medium">
+          Operation:{" "}
+        </label>
         <select
           className="relative flex border-4 border-slate-200 font-medium rounded-md cursor-pointer"
+          id="operation"
           onChange={(e) => setOperation(e.target.value)}
           value={operation}
         >
@@ -310,13 +357,13 @@ const Chart = ({
             );
           })}
         </select>
-        <div className="absolute top-20 right-8 flex gap-3">
+        <div className="absolute top-20 right-8 flex gap-2">
           <div
-            className={`relative ${
+            className={`relative w-50 ${
               createWithAI
                 ? "h-19 items-start"
                 : "h-9 items-center cursor-pointer"
-            } flex justify-center rounded-md  overflow-hidden duration-300`}
+            } flex justify-center rounded-md  duration-300`}
             onClick={() => {
               if (!createWithAI) {
                 setCreateWithAI(true);
@@ -327,24 +374,69 @@ const Chart = ({
             }}
           >
             <textarea
-              className={`h-full w-full resize-none px-3 py-2 flex items-center align-top gap-2 text-sm text-white font-medium outline-none overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 hover:bg-gradient-to-r hover:from-violet-700 hover:to-indigo-700 duration-300 animate-slideDown [animation-fill-mode:backwards] caret-white placeholder:text-slate-300`}
+              name="prompt"
+              className={`h-full w-full relative resize-none text-start px-3 py-2 flex items-center align-top gap-2 text-sm text-white font-medium outline-none overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 duration-300 animate-slideDown ${
+                createWithAI
+                  ? "from-violet-700 to-indigo-700 outline-1 outline-slate-400 rounded-xl"
+                  : "cursor-pointer rounded-md"
+              } [animation-fill-mode:backwards] caret-white placeholder:text-slate-300`}
+              value={createWithAI ? prompt : ""}
               ref={createWithAIRef}
               placeholder={createWithAI && "Write your prompt..."}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  analyzePrompt();
+                }
+              }}
             />
-            <p
-              className={`absolute margin-auto z-99 text-sm text-white flex gap-1 items-center ${
+            <div
+              className={`absolute margin-auto z-99 text-sm text-white font-medium flex gap-1 items-center ${
                 createWithAI
                   ? "animate-slideOut opacity-0"
-                  : "animate-slideIn opacity-100"
+                  : !analyzing && "animate-slideIn opacity-100"
+              } ${
+                analyzing && "animate-analyzing"
               } [animation-fill-mode:backwards]`}
             >
-              <FontAwesomeIcon icon={faWandMagicSparkles} />
-              Create with AI
-            </p>
+              {!analyzing && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  id="Layer_1"
+                  data-name="Layer 1"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  version="1.1"
+                  xmlns:xlink="http://www.w3.org/1999/xlink"
+                  xmlns:svgjs="http://svgjs.dev/svgjs"
+                >
+                  <g width="100%" height="100%" transform="matrix(1,0,0,1,0,0)">
+                    <path
+                      d="M10,21.236,6.755,14.745.264,11.5,6.755,8.255,10,1.764l3.245,6.491L19.736,11.5l-6.491,3.245ZM18,21l1.5,3L21,21l3-1.5L21,18l-1.5-3L18,18l-3,1.5ZM19.333,4.667,20.5,7l1.167-2.333L24,3.5,21.667,2.333,20.5,0,19.333,2.333,17,3.5Z"
+                      fill="#fffcfc"
+                      fill-opacity="1"
+                      data-original-color="#000000ff"
+                      stroke="none"
+                      stroke-opacity="1"
+                    />
+                  </g>
+                </svg>
+              )}
+              {analyzing ? "Analyzing" : "Create with AI"}
+              {analyzing && (
+                <div className="mt-1.5x flex gap-1 animate-analyzing">
+                  <div className="w-1 h-1 bg-white rounded-full animate-typing [animation-delay:-1s]"></div>
+                  <div className="w-1 h-1 bg-white rounded-full animate-typing [animation-delay:-0.3s]"></div>
+                  <div className="w-1 h-1 bg-white rounded-full animate-typing [animation-delay:0.4s]"></div>
+                </div>
+              )}
+            </div>
             <button
               onClick={(e) => {
-                setCreateWithAI(false);
                 e.stopPropagation();
+                setCreateWithAI(false);
+                setAnalyzing(false);
                 createWithAIRef.current.blur();
               }}
               className={`absolute top-1 right-1 w-4 h-4 p-1 flex items-center justify-center rounded-full bg-white ${
@@ -375,10 +467,11 @@ const Chart = ({
       </div>
 
       <div className="px-6 flex items-center gap-4 mb-4 font-medium">
-        <label>X-Axis: </label>
+        <label htmlFor="xAxis">X-Axis: </label>
         <div className="flex">
           <select
             className="relative flex border-4 border-slate-200 rounded-md cursor-pointer"
+            id="xAxis"
             onChange={(e) => setXAxisKey(e.target.value)}
             value={xAxisKey}
           >
@@ -391,6 +484,7 @@ const Chart = ({
           {timePeriod && (
             <select
               className="relative flex border-4 border-slate-200 rounded-md cursor-pointer"
+              id="timePeriod"
               onChange={(e) => setPeriods(e.target.value)}
               value={periods}
             >
@@ -405,9 +499,10 @@ const Chart = ({
 
         {chartType !== "Pie" && (
           <>
-            <label>Y-Axis: </label>
+            <label htmlFor="yAxis">Y-Axis: </label>
             <select
               className="relative flex border-4 border-slate-200 rounded-md cursor-pointer"
+              id="yAxis"
               onChange={(e) => setYAxisKey(e.target.value)}
               value={yAxisKey}
             >

@@ -335,6 +335,11 @@ module.exports = {
             transform: "rotate(0deg)",
           },
         },
+        analyzing: {
+          "0%": { color: "#ffffff" },
+          "50%": { color: "#e3e3e3" },
+          "100%": { color: "#ffffff" },
+        },
       },
       animation: {
         "ping-once": "ping 5s cubic-bezier(0, 0, 0.2, 1)",
@@ -356,6 +361,7 @@ module.exports = {
         textReveal: "textReveal 1.5s cubic-bezier(0.77, 0, 0.175, 1) 0.5s",
         glassIn: "glassIn 0.3s linear",
         glassOut: "glassOut 0.3s linear",
+        analyzing: "analyzing 1.5s linear infinite",
       },
     },
   },
