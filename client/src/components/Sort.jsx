@@ -13,6 +13,8 @@ const Sort = ({
   setData,
   chartData,
   setChartData,
+  timeData,
+  setTimeData,
   dataTypes,
   setSort,
   xAxisKey,
@@ -27,9 +29,11 @@ const Sort = ({
 
   useEffect(() => {
     if (view === "Charts") {
-      if (sortColumn !== "")
+      if (sortColumn !== "") {
         setChartData(sortChart(dataTypes[sortColumn], sortColumn));
-      else setFormattedData(copyData);
+      } else {
+        setFormattedData(copyData);
+      }
     } else {
       const columnIndex = columns.indexOf(sortColumn);
       const dataType = dataTypes[columns[columnIndex]];

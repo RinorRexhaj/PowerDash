@@ -10,6 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import moment from "moment";
+import axios from "axios";
 import Row from "./Row";
 import Columns from "./Columns";
 import ImportExcel from "../components/ImportExcel";
@@ -18,6 +19,7 @@ import Sort from "../components/Sort";
 
 const View = ({ type, data, setData, created, deleted }) => {
   const [chartData, setChartData] = useState([]);
+  const [timeData, setTimeData] = useState([]);
   const [formattedData, setFormattedData] = useState([]);
   const [copyData, setCopyData] = useState([]);
   const [dataTypes, setDataTypes] = useState(undefined);
@@ -30,6 +32,7 @@ const View = ({ type, data, setData, created, deleted }) => {
   const [operation, setOperation] = useState("Total");
   const [xAxisKey, setXAxisKey] = useState("");
   const [yAxisKey, setYAxisKey] = useState("");
+  const [timePeriod, setTimePeriod] = useState(false);
   const [deletedRow, setDeletedRow] = useState(undefined);
   const inputRef = useRef();
   const views = ["Data", "Charts"];
@@ -204,6 +207,8 @@ const View = ({ type, data, setData, created, deleted }) => {
                 setData={setData}
                 chartData={formattedData}
                 setChartData={setFormattedData}
+                timeData={timeData}
+                setTimeData={setTimeData}
                 dataTypes={dataTypes}
                 setSort={setSort}
                 xAxisKey={xAxisKey}
@@ -310,7 +315,10 @@ const View = ({ type, data, setData, created, deleted }) => {
             data={chartData}
             formattedData={formattedData}
             setFormattedData={setFormattedData}
+            timeData={timeData}
+            setTimeData={setTimeData}
             dataTypes={dataTypes}
+            columns={columns}
             sort={sort}
             setCopyData={setCopyData}
             xAxisKey={xAxisKey}
@@ -319,6 +327,8 @@ const View = ({ type, data, setData, created, deleted }) => {
             setYAxisKey={setYAxisKey}
             operation={operation}
             setOperation={setOperation}
+            timePeriod={timePeriod}
+            setTimePeriod={setTimePeriod}
           />
         )}
       </div>
