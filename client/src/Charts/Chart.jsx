@@ -10,13 +10,18 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useGenerateImage } from "recharts-to-png";
 import FileSaver from "file-saver";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const Chart = ({
   title,
   data,
   formattedData,
   setFormattedData,
+  timeData,
+  setTimeData,
   dataTypes,
+  columns,
   sort,
   setCopyData,
   xAxisKey,
@@ -25,11 +30,11 @@ const Chart = ({
   setYAxisKey,
   operation,
   setOperation,
+  timePeriod,
+  setTimePeriod,
 }) => {
   let initialData = [];
   const [chartType, setChartType] = useState("Bar");
-  const [timePeriod, setTimePeriod] = useState(false);
-  const [timeData, setTimeData] = useState([]);
   const [periods, setPeriods] = useState("Monthly");
   const [createWithAI, setCreateWithAI] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -59,20 +64,12 @@ const Chart = ({
   // const trendLineInput = useRef(null);
   const createWithAIRef = useRef(null);
 
-  const colors = [
-    "#003f5c",
-    "#2f4b7c",
-    "#665191",
-    "#a05195",
-    "#d45087",
-    "#f95d6a",
-    "#ff7c43",
-    "#ffa600",
-    "#003f5c",
-    "#2f4b7c",
-    "#665191",
-    "#a05195",
-  ];
+  useEffect(() => {
+    if (data && data.length > 0) {
+      if (!sort) initializeKeys(data[0]);
+      if (dataTypes !== undefined) formatData();
+    }
+  }, []);
 
   // useEffect(() => {
   //   const fetchDataTypes = async () => {
@@ -95,15 +92,10 @@ const Chart = ({
   //         ],
   //       });
 
-  //       console.log(response.choices[0].message.content);
-  //       setDataTypes(response.choices[0].message.content);
-  //     } catch (error) {
-  //       console.error("Error fetching data types:", error);
-  //     }
-  //   };
-
-  //   fetchDataTypes();
-  // }, [data]);
+  useEffect(() => {
+    formatData();
+    handleTimePeriod();
+  }, [xAxisKey, yAxisKey, operation]);
 
   useEffect(() => {
     formatData();
@@ -223,13 +215,20 @@ const Chart = ({
       const existing = acc.find((val) => val[xAxisKey] === key);
       if (existing) {
         existing[yAxisKey] += item[yAxisKey];
+        existing.count += 1;
       } else {
         newValue[xAxisKey] = key;
         newValue[yAxisKey] = item[yAxisKey];
+        newValue.count = 1;
         acc.push(newValue);
       }
       return acc;
     }, []);
+    if (operation === "Average") {
+      groupedData.forEach((item) => {
+        item[yAxisKey] /= item.count;
+      });
+    }
     if (period === "Monthly") {
       groupedData = sortAndCompleteMonths(groupedData);
     } else if (period === "Quarterly") {
@@ -242,6 +241,7 @@ const Chart = ({
           new Date(a[xAxisKey]).getTime() - new Date(b[xAxisKey]).getTime()
       );
     }
+    groupedData.forEach((item) => delete item.count);
     setTimeData(groupedData);
   };
 
@@ -307,10 +307,77 @@ const Chart = ({
     setCreateWithAI(false);
     setPrompt("");
     setAnalyzing(true);
-    await axios.post("http://127.0.0.1:5000/", { prompt }).then((res) => {
-      console.log(res.data);
+    const cols = [...columns].map((col) => {
+      col = col.replace(/([a-z])([A-Z])/g, "$1 $2");
+      col = col.replace(/[_-]/g, " ");
+      return col.toLowerCase().trim();
     });
-    setAnalyzing(false);
+    const formattedColumns = await axios
+      .post("http://127.0.0.1:5000/lemma", { columns: cols })
+      .then((res) => res.data);
+    let words, synoyms;
+    await axios
+      .post("http://127.0.0.1:5000/prompt", {
+        prompt,
+      })
+      .then((res) => {
+        words = res.data.words;
+        synoyms = res.data.synonyms;
+      });
+    let chartType, xAxis, yAxis, operation, timePeriod, sort;
+    words.forEach((word) => {
+      chartTypes.forEach((type) => {
+        if (word.word === type.toLowerCase()) chartType = type;
+      });
+      operations.forEach((op) => {
+        if (word.word === op.toLowerCase()) operation = op;
+      });
+      for (const [index, col] of formattedColumns.entries()) {
+        for (const w of col.split(" ")) {
+          if (w === word.word && dataTypes[columns[index]] === "number") {
+            yAxis = columns[index];
+            return;
+          }
+        }
+      }
+      for (const [index, col] of formattedColumns.entries()) {
+        for (const w of col.split(" ")) {
+          if (w === word.word || word.word.includes(w)) {
+            xAxis = columns[index];
+            return;
+          }
+        }
+      }
+      for (const [index, period] of [
+        "day",
+        "month",
+        "quarter",
+        "year",
+      ].entries()) {
+        if (word.word === period || word.word.includes(period)) {
+          timePeriod = timePeriods[index];
+          if (xAxis === undefined) {
+            for (const col of columns) {
+              if (dataTypes[col] === "date") {
+                xAxis = col;
+                break;
+              }
+            }
+          }
+          return;
+        }
+      }
+    });
+    setTimeout(() => {
+      if (chartType !== undefined) setChartType(chartType);
+      else setChartType("Bar");
+      if (operation !== undefined) setOperation(operation);
+      else setOperation("Total");
+      if (yAxis !== undefined) setYAxisKey(yAxis);
+      if (xAxis !== undefined) setXAxisKey(xAxis);
+      if (timePeriod !== undefined) setPeriods(timePeriod);
+      setAnalyzing(false);
+    }, 800);
   };
 
   const chartToImage = useCallback(async () => {
@@ -319,6 +386,61 @@ const Chart = ({
       FileSaver.saveAs(png, `${title}.png`);
     }
   }, [getPng]);
+
+  const chartToPDF = useCallback(async () => {
+    const png = await getPng();
+    if (png) {
+      const pdf = new jsPDF();
+      const imgProps = pdf.getImageProperties(png);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(png, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.addPage();
+      const columns = Object.keys(data[0] || {});
+      const tableData = [];
+      columns.forEach((column) => {
+        if (typeof data[0][column] === "number") {
+          // Numeric data: Calculate statistics
+          const columnData = data.map((row) => row[column]);
+          const total = columnData.reduce((sum, value) => sum + value, 0);
+          const avg = total / columnData.length;
+          const max = Math.max(...columnData);
+          const min = Math.min(...columnData);
+
+          tableData.push([
+            column,
+            `Total: ${total.toFixed(2)}`,
+            `Avg: ${avg.toFixed(2)}`,
+            `Max: ${max.toFixed(2)}`,
+            `Min: ${min.toFixed(2)}`,
+          ]);
+        } else {
+          // Categorical data: Count occurrences
+          const counts = data.reduce((acc, row) => {
+            acc[row[column]] = (acc[row[column]] || 0) + 1;
+            return acc;
+          }, {});
+          Object.entries(counts).forEach(([value, count]) => {
+            tableData.push([column, `Value: ${value}`, `Count: ${count}`]);
+          });
+        }
+      });
+      const headers =
+        tableData.length > 0 && typeof data[0][columns[0]] === "number"
+          ? ["Column", "Total", "Average", "Max", "Min"]
+          : ["Column", "Value", "Count"];
+
+      // Add table to the new page
+      autoTable(pdf, {
+        head: [headers],
+        body: tableData,
+        startY: 20,
+      });
+      const pdfBlob = pdf.output("blob");
+      FileSaver.saveAs(pdfBlob, `${title}.pdf`);
+    }
+  }, [getPng, data, title]);
 
   return (
     <div className="py-4">
@@ -391,7 +513,7 @@ const Chart = ({
               }}
             />
             <div
-              className={`absolute margin-auto z-99 text-sm text-white font-medium flex gap-1 items-center ${
+              className={`absolute margin-auto z-50 text-sm text-white font-medium flex gap-1 items-center ${
                 createWithAI
                   ? "animate-slideOut opacity-0"
                   : !analyzing && "animate-slideIn opacity-100"
@@ -458,6 +580,7 @@ const Chart = ({
             <button
               className="px-3 py-2 flex items-center gap-2 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
               style={{ animationDelay: "0.3s" }}
+              onClick={() => chartToPDF()}
             >
               <FontAwesomeIcon icon={faChartLine} />
               Generate Report
