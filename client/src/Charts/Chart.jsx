@@ -10,6 +10,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useGenerateImage } from "recharts-to-png";
 import FileSaver from "file-saver";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const Chart = ({
   title,
@@ -374,6 +376,61 @@ const Chart = ({
     }
   }, [getPng]);
 
+  const chartToPDF = useCallback(async () => {
+    const png = await getPng();
+    if (png) {
+      const pdf = new jsPDF();
+      const imgProps = pdf.getImageProperties(png);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(png, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.addPage();
+      const columns = Object.keys(data[0] || {});
+      const tableData = [];
+      columns.forEach((column) => {
+        if (typeof data[0][column] === "number") {
+          // Numeric data: Calculate statistics
+          const columnData = data.map((row) => row[column]);
+          const total = columnData.reduce((sum, value) => sum + value, 0);
+          const avg = total / columnData.length;
+          const max = Math.max(...columnData);
+          const min = Math.min(...columnData);
+
+          tableData.push([
+            column,
+            `Total: ${total.toFixed(2)}`,
+            `Avg: ${avg.toFixed(2)}`,
+            `Max: ${max.toFixed(2)}`,
+            `Min: ${min.toFixed(2)}`,
+          ]);
+        } else {
+          // Categorical data: Count occurrences
+          const counts = data.reduce((acc, row) => {
+            acc[row[column]] = (acc[row[column]] || 0) + 1;
+            return acc;
+          }, {});
+          Object.entries(counts).forEach(([value, count]) => {
+            tableData.push([column, `Value: ${value}`, `Count: ${count}`]);
+          });
+        }
+      });
+      const headers =
+        tableData.length > 0 && typeof data[0][columns[0]] === "number"
+          ? ["Column", "Total", "Average", "Max", "Min"]
+          : ["Column", "Value", "Count"];
+
+      // Add table to the new page
+      autoTable(pdf, {
+        head: [headers],
+        body: tableData,
+        startY: 20,
+      });
+      const pdfBlob = pdf.output("blob");
+      FileSaver.saveAs(pdfBlob, `${title}.pdf`);
+    }
+  }, [getPng, data, title]);
+
   return (
     <div className="py-4">
       <div className="px-6 flex items-center gap-3 mb-4">
@@ -512,6 +569,7 @@ const Chart = ({
             <button
               className="px-3 py-2 flex items-center gap-2 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
               style={{ animationDelay: "0.3s" }}
+              onClick={() => chartToPDF()}
             >
               <FontAwesomeIcon icon={faChartLine} />
               Generate Report
