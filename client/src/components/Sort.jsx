@@ -44,7 +44,7 @@ const Sort = ({
   }, [sortType, sortColumn]);
 
   useEffect(() => {
-    setSortColumn(xAxisKey);
+    setSortColumn(xAxisKey[0]);
   }, [xAxisKey]);
 
   // useEffect(() => {
@@ -141,22 +141,23 @@ const Sort = ({
           No Sort
         </button>
         {columns.map((col) => {
-          return (
-            <button
-              className={`min-w-40 rounded-sm font-medium py-1 px-2 text-left ${
-                sortColumn === col
-                  ? "bg-black text-white"
-                  : "text-black hover:bg-slate-200"
-              } duration-200`}
-              onClick={() => {
-                setSorted(false);
-                setSortColumn(col);
-              }}
-              key={col + "sort"}
-            >
-              {col}
-            </button>
-          );
+          if (view === "Data" || col === yAxisKey || col === xAxisKey[0])
+            return (
+              <button
+                className={`min-w-40 rounded-sm font-medium py-1 px-2 text-left ${
+                  sortColumn === col
+                    ? "bg-black text-white"
+                    : "text-black hover:bg-slate-200"
+                } duration-200`}
+                onClick={() => {
+                  setSorted(false);
+                  setSortColumn(col);
+                }}
+                key={col + "sort"}
+              >
+                {col}
+              </button>
+            );
         })}
       </div>
     </div>

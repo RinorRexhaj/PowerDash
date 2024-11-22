@@ -30,7 +30,7 @@ const View = ({ type, data, setData, created, deleted }) => {
   const [view, setView] = useState("Data");
   const [sort, setSort] = useState(false);
   const [operation, setOperation] = useState("Total");
-  const [xAxisKey, setXAxisKey] = useState("");
+  const [xAxisKey, setXAxisKey] = useState([]);
   const [yAxisKey, setYAxisKey] = useState("");
   const [timePeriod, setTimePeriod] = useState(false);
   const [deletedRow, setDeletedRow] = useState(undefined);
