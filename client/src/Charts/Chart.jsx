@@ -1,17 +1,18 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { CartesianGrid, Cell, Tooltip, XAxis, YAxis } from "recharts";
 import axios from "axios";
 import BarsChart from "./BarsChart";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChartLine,
   faImage,
+  faLightbulb,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { useGenerateImage } from "recharts-to-png";
 import FileSaver from "file-saver";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import PiesChart from "./PiesChart";
 
 const Chart = ({
   title,
@@ -34,20 +35,23 @@ const Chart = ({
   setTimePeriod,
 }) => {
   let initialData = [];
+  const copyData = [...formattedData];
   const [chartType, setChartType] = useState("Bar");
   const [periods, setPeriods] = useState("Monthly");
   const [createWithAI, setCreateWithAI] = useState(false);
+  const [suggestion, setSuggestion] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [total, setTotal] = useState(0);
   const [average, setAverage] = useState(0);
+  const [xAxisMenu, setXAxisMenu] = useState(false);
   const [trendLine, setTrendLine] = useState(false);
-  const chartTypes = ["Bar", "Pie", "Scatter"];
-  const operations = ["Total", "Average"];
+  const chartTypes = ["Bar", "Pie"];
+  const operations = ["Total", "Average", "Min", "Max", "Count"];
   const timePeriods = ["Daily", "Monthly", "Quarterly", "Yearly"];
   const [getPng, { ref }] = useGenerateImage({
     quality: 0.8,
-    type: "image/png",
+    type: "image/jpg",
   });
   const groupings = {
     Daily: (date) => date.toISOString().split("T")[0],
@@ -59,9 +63,8 @@ const Chart = ({
       else if (month >= 6 && month <= 8) return "Q3";
       return "Q4";
     },
-    Yearly: (date) => `${date.getFullYear()}`,
+    Yearly: (date) => `${new Date(date).getFullYear()}`,
   };
-  // const trendLineInput = useRef(null);
   const createWithAIRef = useRef(null);
 
   useEffect(() => {
@@ -99,13 +102,39 @@ const Chart = ({
 
   useEffect(() => {
     formatData();
-    groupByTimePeriod(initialData, periods);
+    groupByTimePeriod(initialData, xAxisKey[0], periods);
   }, [periods]);
 
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload !== undefined && payload[0] !== undefined) {
+      return (
+        <div className="px-2 py-1.5 bg-white border border-slate-400">
+          <p className="font-bold">
+            {payload[0].payload[xAxisKey[0]] +
+              (payload[0].payload[xAxisKey[1]] !== undefined
+                ? " - " + payload[0].payload[xAxisKey[1]]
+                : "")}
+          </p>
+          <div className="flex gap-1">
+            <p className="font-normal">{payload[0].name}: </p>
+            <p className="font-medium">
+              {new Intl.NumberFormat("en-US", {
+                compactDisplay: "short",
+              }).format(payload[0].payload[yAxisKey])}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   const handleTimePeriod = () => {
-    if (dataTypes[xAxisKey] === "date") {
+    if (dataTypes[xAxisKey[0]] === "date") {
       setTimePeriod(true);
-      groupByTimePeriod(initialData, periods);
+      groupByTimePeriod(initialData, xAxisKey[0], periods);
+    } else if (dataTypes[xAxisKey[1]] === "date") {
+      setTimePeriod(true);
     } else {
       setTimePeriod(false);
       setPeriods("Monthly");
@@ -129,25 +158,36 @@ const Chart = ({
       return newRow;
     });
     let newData;
-    if (operation === "Total") {
-      newData = groupByProperty(formattedData, xAxisKey);
-    } else if (operation === "Average") {
-      newData = averageByProperty(formattedData, xAxisKey, yAxisKey);
+    if (xAxisKey.length === 1) {
+      if (operation === "Total") {
+        newData = groupByProperty(formattedData, xAxisKey[0]);
+      } else if (operation === "Average") {
+        newData = averageByProperty(formattedData, xAxisKey[0], yAxisKey);
+      } else if (operation === "Min") {
+        newData = minByProperty(formattedData, xAxisKey[0], yAxisKey);
+      } else if (operation === "Max") {
+        newData = maxByProperty(formattedData, xAxisKey[0], yAxisKey);
+      } else {
+        newData = countByProperty(formattedData, xAxisKey[0]);
+      }
+    } else {
+      newData = groupByProperties(formattedData, xAxisKey);
     }
     if (initialData.length === 0) {
       initialData = newData;
     }
-    if (total === 0 && average === 0) {
-      calculateTotalAverage(formattedData);
-    }
+    calculateTotalAverage(formattedData);
     setFormattedData(newData);
+    if (dataTypes[xAxisKey[0]] === "date") {
+      setTimeData(newData);
+    }
     setCopyData(newData);
   };
 
   const initializeKeys = (data) => {
     const keys = Object.keys(data);
     if (keys.length >= 2) {
-      setXAxisKey(keys[0]);
+      if (!xAxisKey.includes(keys[0])) setXAxisKey([...xAxisKey, keys[0]]);
       keys.forEach((key) => {
         if (dataTypes[key] === "number") setYAxisKey(key);
         return;
@@ -171,6 +211,94 @@ const Chart = ({
     }, []);
   };
 
+  const groupByProperties = (arr, props) => {
+    const groupBy = groupings[periods];
+    let groupedData = arr.reduce((acc, item) => {
+      const compositeKey = props
+        .map((prop) => {
+          if (dataTypes[prop] === "string") return item[prop];
+          return groupBy(item[prop]);
+        })
+        .join("||");
+      let existingGroup = acc.find((group) => group.groupKey === compositeKey);
+      if (existingGroup) {
+        existingGroup[yAxisKey] += item[yAxisKey];
+        existingGroup.count += 1;
+      } else {
+        const newGroup = {
+          groupKey: compositeKey,
+          ...Object.fromEntries(
+            props.map((key) => [
+              key,
+              dataTypes[key] === "string" ? item[key] : groupBy(item[key]),
+            ])
+          ),
+          [yAxisKey]: item[yAxisKey],
+          count: 1,
+        };
+        acc.push(newGroup);
+      }
+      return acc;
+    }, []);
+    groupedData.forEach((row) => delete row.groupKey);
+    if (operation === "Average") {
+      groupedData.forEach((row) => {
+        row[yAxisKey] /= row.count;
+        delete row.count;
+      });
+    }
+    [...props].reverse().forEach((prop) => {
+      if (dataTypes[prop] === "string") {
+        groupedData.sort((a, b) => {
+          if (a[prop] < b[prop]) return -1;
+          else if (a[prop] > b[prop]) return 1;
+          return 0;
+        });
+      } else {
+        const prop = props.find((prop) => dataTypes[prop] === "date");
+        switch (periods) {
+          case "Daily":
+            groupedData.sort(
+              (a, b) =>
+                new Date(a[prop]).getTime() - new Date(b[prop]).getTime()
+            );
+            break;
+          case "Monthly":
+            const monthOrder = [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dec",
+            ];
+            groupedData.sort(
+              (a, b) =>
+                monthOrder.indexOf(a[prop]) - monthOrder.indexOf(b[prop])
+            );
+            break;
+          case "Quarterly":
+            const quarterOrder = ["Q1", "Q2", "Q3", "Q4"];
+            groupedData.sort(
+              (a, b) =>
+                quarterOrder.indexOf(a[prop]) - quarterOrder.indexOf(b[prop])
+            );
+            break;
+          case "Yearly":
+            groupedData.sort((a, b) => a[prop] - b[prop]);
+            break;
+        }
+      }
+    });
+    return groupedData;
+  };
+
   const averageByProperty = (arr, groupByProp, avgProp) => {
     const grouped = arr.reduce((acc, obj) => {
       const existing = acc.find(
@@ -192,6 +320,52 @@ const Chart = ({
       .map(({ sum, count, ...rest }) => rest);
   };
 
+  const minByProperty = (data, xAxisKey, yAxisKey) => {
+    const minData = data.reduce((acc, item) => {
+      const key = item[xAxisKey];
+      const existingGroup = acc.find((group) => group[xAxisKey] === key);
+      if (existingGroup) {
+        existingGroup[yAxisKey] = Math.min(
+          existingGroup[yAxisKey],
+          item[yAxisKey]
+        );
+      } else {
+        acc.push({ [xAxisKey]: key, [yAxisKey]: item[yAxisKey] });
+      }
+      return acc;
+    }, []);
+    return minData;
+  };
+
+  const maxByProperty = (data, xAxisKey, yAxisKey) => {
+    return data.reduce((acc, item) => {
+      const key = item[xAxisKey];
+      const existingGroup = acc.find((group) => group[xAxisKey] === key);
+      if (existingGroup) {
+        existingGroup[yAxisKey] = Math.max(
+          existingGroup[yAxisKey],
+          item[yAxisKey]
+        );
+      } else {
+        acc.push({ [xAxisKey]: key, [yAxisKey]: item[yAxisKey] });
+      }
+      return acc;
+    }, []);
+  };
+
+  const countByProperty = (data, xAxisKey) => {
+    return data.reduce((acc, item) => {
+      const key = item[xAxisKey];
+      const existingGroup = acc.find((group) => group[xAxisKey] === key);
+      if (existingGroup) {
+        existingGroup[yAxisKey] += 1;
+      } else {
+        acc.push({ [xAxisKey]: key, [yAxisKey]: 1 });
+      }
+      return acc;
+    }, []);
+  };
+
   const calculateTotalAverage = (data) => {
     let total = 0,
       average = 0;
@@ -206,18 +380,18 @@ const Chart = ({
     setAverage(average.toFixed(2));
   };
 
-  const groupByTimePeriod = (data, period) => {
+  const groupByTimePeriod = (data, prop, period) => {
     const groupBy = groupings[period];
     let groupedData = data.reduce((acc, item) => {
-      const date = new Date(item[xAxisKey]);
+      const date = new Date(item[prop]);
       const key = groupBy(date);
       const newValue = { ...item };
-      const existing = acc.find((val) => val[xAxisKey] === key);
+      const existing = acc.find((val) => val[prop] === key);
       if (existing) {
         existing[yAxisKey] += item[yAxisKey];
         existing.count += 1;
       } else {
-        newValue[xAxisKey] = key;
+        newValue[prop] = key;
         newValue[yAxisKey] = item[yAxisKey];
         newValue.count = 1;
         acc.push(newValue);
@@ -230,22 +404,23 @@ const Chart = ({
       });
     }
     if (period === "Monthly") {
-      groupedData = sortAndCompleteMonths(groupedData);
+      groupedData = sortAndCompleteMonths(groupedData, prop);
     } else if (period === "Quarterly") {
-      groupedData = sortAndCompleteQuarters(groupedData);
+      groupedData = sortAndCompleteQuarters(groupedData, prop);
     } else if (period === "Yearly") {
-      groupedData = sortAndCompleteYears(groupedData);
+      groupedData = sortAndCompleteYears(groupedData, prop);
     } else {
       groupedData.sort(
-        (a, b) =>
-          new Date(a[xAxisKey]).getTime() - new Date(b[xAxisKey]).getTime()
+        (a, b) => new Date(a[prop]).getTime() - new Date(b[prop]).getTime()
       );
     }
     groupedData.forEach((item) => delete item.count);
+    calculateTotalAverage(groupedData);
     setTimeData(groupedData);
+    return groupedData;
   };
 
-  const sortAndCompleteMonths = (months) => {
+  const sortAndCompleteMonths = (months, prop) => {
     const monthOrder = [
       "Jan",
       "Feb",
@@ -260,11 +435,12 @@ const Chart = ({
       "Nov",
       "Dec",
     ];
-    const monthSet = new Set(months[xAxisKey]);
+    const monthSet = new Set(months[prop]);
     monthOrder.forEach((month) => {
-      let mon = months.find((m) => m[xAxisKey] === month);
+      let mon = months.find((m) => m[prop] === month);
       monthSet.add({
-        [xAxisKey]: month,
+        ...mon,
+        [prop]: month,
         [yAxisKey]: mon === undefined ? 0 : mon[yAxisKey],
       });
     });
@@ -273,13 +449,13 @@ const Chart = ({
     );
   };
 
-  const sortAndCompleteQuarters = (data) => {
+  const sortAndCompleteQuarters = (data, prop) => {
     const quarterOrder = ["Q1", "Q2", "Q3", "Q4"];
-    const quarters = new Set(data[xAxisKey]);
+    const quarters = new Set(data[prop]);
     quarterOrder.forEach((quarter) => {
-      let q = data.find((m) => m[xAxisKey] === quarter);
+      let q = data.find((m) => m[prop] === quarter);
       quarters.add({
-        [xAxisKey]: quarter,
+        [prop]: quarter,
         [yAxisKey]: q === undefined ? 0 : q[yAxisKey],
       });
     });
@@ -288,23 +464,24 @@ const Chart = ({
     );
   };
 
-  const sortAndCompleteYears = (data) => {
-    const minYear = Math.min(...data.map((item) => item[xAxisKey]));
-    const maxYear = Math.max(...data.map((item) => item[xAxisKey]));
-    const years = new Set(data[xAxisKey]);
+  const sortAndCompleteYears = (data, prop) => {
+    const minYear = Math.min(...data.map((item) => item[prop]));
+    const maxYear = Math.max(...data.map((item) => item[prop]));
+    const years = new Set(data[prop]);
     for (let i = minYear; i <= maxYear; i++) {
-      let y = data.find((y) => y[xAxisKey] == i);
+      let y = data.find((y) => y[prop] == i);
       years.add({
-        [xAxisKey]: i,
+        [prop]: i,
         [yAxisKey]: y === undefined ? 0 : y[yAxisKey],
       });
     }
-    return Array.from(years).sort((a, b) => a[xAxisKey] - b[xAxisKey]);
+    return Array.from(years).sort((a, b) => a[prop] - b[prop]);
   };
 
-  const analyzePrompt = async () => {
+  const analyzePrompt = async (prompt) => {
     createWithAIRef.current.blur();
     setCreateWithAI(false);
+    setSuggestion(false);
     setPrompt("");
     setAnalyzing(true);
     const cols = [...columns].map((col) => {
@@ -324,6 +501,7 @@ const Chart = ({
         words = res.data.words;
         synoyms = res.data.synonyms;
       });
+    console.log(words);
     let chartType, xAxis, yAxis, operation, timePeriod, sort;
     words.forEach((word) => {
       chartTypes.forEach((type) => {
@@ -374,16 +552,54 @@ const Chart = ({
       if (operation !== undefined) setOperation(operation);
       else setOperation("Total");
       if (yAxis !== undefined) setYAxisKey(yAxis);
-      if (xAxis !== undefined) setXAxisKey(xAxis);
+      if (xAxis !== undefined) {
+        setXAxisKey([...[], xAxis]);
+      }
       if (timePeriod !== undefined) setPeriods(timePeriod);
       setAnalyzing(false);
     }, 800);
   };
 
+  const createSuggestion = () => {
+    let suggestions = [];
+    const months = ["daily", "monthly", "quarterly", "yearly"];
+    let yAxis = columns.filter((col) => dataTypes[col] === "number");
+    let yAxis1 = yAxis[Math.floor(Math.random() * yAxis.length)];
+    let yAxis2 = yAxis[Math.floor(Math.random() * yAxis.length)];
+    let suggestion = `Create a bar chart with the average ${yAxis1.toLowerCase()} `;
+    let instance = Object.entries(dataTypes).find(
+      ([key, val]) => val === "date"
+    );
+    if (instance !== undefined) {
+      suggestion += "on a " + months[Math.floor(Math.random() * 4)] + " basis";
+      suggestions.push(suggestion);
+    }
+    const stringKey = Object.entries(dataTypes).find(
+      ([key, val]) => val === "string"
+    );
+    if (stringKey !== undefined) {
+      suggestion = `Visualize the relationship between the total ${yAxis2.toLowerCase()} across ${stringKey[0].toLowerCase()}`;
+      suggestions.push(suggestion);
+    }
+    return suggestions;
+  };
+
+  const filterSuggestion = (data) => {
+    const bounds = [
+      Math.min(...data.map((d) => d[yAxisKey])),
+      Math.max(...data.map((d) => d[yAxisKey])),
+    ];
+    bounds[0] /= Math.floor(Math.log10(Math.abs(bounds[0]))) + 1;
+    bounds[1] /= Math.floor(Math.log10(Math.abs(bounds[1]))) + 1;
+    bounds[0] *= 0.75;
+    bounds[1] *= 1.25;
+    console.log(bounds);
+  };
+
   const chartToImage = useCallback(async () => {
     const png = await getPng();
     if (png) {
-      FileSaver.saveAs(png, `${title}.png`);
+      FileSaver.saveAs(png, `${title}.jpg`);
     }
   }, [getPng]);
 
@@ -397,45 +613,74 @@ const Chart = ({
 
       pdf.addImage(png, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.addPage();
-      const columns = Object.keys(data[0] || {});
       const tableData = [];
-      columns.forEach((column) => {
-        if (typeof data[0][column] === "number") {
-          // Numeric data: Calculate statistics
-          const columnData = data.map((row) => row[column]);
-          const total = columnData.reduce((sum, value) => sum + value, 0);
-          const avg = total / columnData.length;
-          const max = Math.max(...columnData);
-          const min = Math.min(...columnData);
-
+      if (timePeriod) {
+        timeData.forEach((column) => {
           tableData.push([
-            column,
-            `Total: ${total.toFixed(2)}`,
-            `Avg: ${avg.toFixed(2)}`,
-            `Max: ${max.toFixed(2)}`,
-            `Min: ${min.toFixed(2)}`,
+            column[xAxisKey[0]],
+            new Intl.NumberFormat("en-US", {
+              compactDisplay: "short",
+              minimumFractionDigits: column[yAxisKey] % 1 === 0 ? 0 : 2,
+            }).format(
+              column[yAxisKey] % 1 === 0
+                ? column[yAxisKey]
+                : column[yAxisKey].toFixed(2)
+            ),
           ]);
-        } else {
-          // Categorical data: Count occurrences
-          const counts = data.reduce((acc, row) => {
-            acc[row[column]] = (acc[row[column]] || 0) + 1;
-            return acc;
-          }, {});
-          Object.entries(counts).forEach(([value, count]) => {
-            tableData.push([column, `Value: ${value}`, `Count: ${count}`]);
-          });
-        }
-      });
-      const headers =
-        tableData.length > 0 && typeof data[0][columns[0]] === "number"
-          ? ["Column", "Total", "Average", "Max", "Min"]
-          : ["Column", "Value", "Count"];
+        });
+      } else {
+        formattedData.forEach((column) => {
+          tableData.push([
+            column[xAxisKey[0]],
+            new Intl.NumberFormat("en-US", {
+              compactDisplay: "short",
+              minimumFractionDigits: column[yAxisKey] % 1 === 0 ? 0 : 2,
+            }).format(
+              column[yAxisKey] % 1 === 0
+                ? column[yAxisKey]
+                : column[yAxisKey].toFixed(2)
+            ),
+          ]);
+        });
+      }
+      tableData.push([
+        "Total",
+        new Intl.NumberFormat("en-US", {
+          compactDisplay: "short",
+          minimumFractionDigits: 2,
+        }).format(total),
+      ]);
+      tableData.push([
+        "Average",
+        new Intl.NumberFormat("en-US", {
+          compactDisplay: "short",
+          minimumFractionDigits: 2,
+        }).format((total / (tableData.length - 1)).toFixed(2)),
+      ]);
+      const headers = ["Column", `${operation} of ${yAxisKey}`];
+      const pageWidth = pdf.internal.pageSize.width;
+      const tableWidth = pageWidth * 0.4;
 
-      // Add table to the new page
-      autoTable(pdf, {
+      pdf.autoTable({
         head: [headers],
         body: tableData,
         startY: 20,
+        margin: { left: (pageWidth - tableWidth) / 2 },
+        theme: "grid",
+        tableWidth: "wrap",
+        didParseCell: (data) => {
+          data.cell.styles.halign = "right";
+          data.cell.styles.cellPadding = {
+            top: 1.5,
+            bottom: 1.5,
+            left: 5,
+            right: 2,
+          };
+          if (data.row.index >= tableData.length - 2) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [216, 221, 230];
+          }
+        },
       });
       const pdfBlob = pdf.output("blob");
       FileSaver.saveAs(pdfBlob, `${title}.pdf`);
@@ -481,34 +726,39 @@ const Chart = ({
         </select>
         <div className="absolute top-20 right-8 flex gap-2">
           <div
-            className={`relative w-50 ${
+            className={`relative w-70 ${
               createWithAI
-                ? "h-19 items-start"
+                ? suggestion
+                  ? "items-start h-9"
+                  : "items-start h-19"
                 : "h-9 items-center cursor-pointer"
             } flex justify-center rounded-md  duration-300`}
             onClick={() => {
               if (!createWithAI) {
                 setCreateWithAI(true);
-                setTimeout(() => {
-                  createWithAIRef.current.focus();
-                }, 500);
+                setSuggestion(true);
+                createWithAIRef.current.focus();
               }
             }}
           >
             <textarea
               name="prompt"
-              className={`h-full w-full relative resize-none text-start px-3 py-2 flex items-center align-top gap-2 text-sm text-white font-medium outline-none overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 duration-300 animate-slideDown ${
+              className={`h-full w-full relative resize-none text-start px-3 py-2 flex items-center align-top gap-2 text-sm text-white font-medium rounded-md outline-none overflow-hidden bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 duration-300 animate-slideDown ${
                 createWithAI
-                  ? "from-violet-700 to-indigo-700 outline-1 outline-slate-400 rounded-xl"
+                  ? "from-violet-700 to-indigo-700 outline-1 outline-slate-400"
                   : "cursor-pointer rounded-md"
               } [animation-fill-mode:backwards] caret-white placeholder:text-slate-300`}
               value={createWithAI ? prompt : ""}
               ref={createWithAIRef}
               placeholder={createWithAI && "Write your prompt..."}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPrompt(val);
+                if (val !== "") setSuggestion(false);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  analyzePrompt();
+                  analyzePrompt(prompt);
                 }
               }}
             />
@@ -558,6 +808,8 @@ const Chart = ({
               onClick={(e) => {
                 e.stopPropagation();
                 setCreateWithAI(false);
+                setSuggestion(false);
+                setPrompt("");
                 setAnalyzing(false);
                 createWithAIRef.current.blur();
               }}
@@ -567,6 +819,38 @@ const Chart = ({
             >
               <FontAwesomeIcon icon={faXmark} />
             </button>
+            <button
+              className="h-full w-full z-99 absolute top-10 px-3 py-2 flex justify-center gap-2 text-sm text-white font-medium rounded-md outline-none bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 duration-300 animate-slideDown [animation-fill-mode:backwards] caret-white cursor-pointer"
+              onClick={() =>
+                filterSuggestion(timePeriod ? timeData : formattedData)
+              }
+            >
+              Or Search / Filter
+            </button>
+            {createWithAI && suggestion && (
+              <div className="absolute top-10 bg-black z-99 flex flex-col gap-1 outline outline-2 outline-black rounded-md overflow-hidden">
+                <p className="px-3 py-1 z-99 text-white text-sm font-medium animate-slideIn flex items-center gap-1 [animation-fill-mode:backwards]">
+                  <FontAwesomeIcon icon={faLightbulb} />
+                  Suggestions
+                </p>
+                {createSuggestion().map((suggestion, index) => {
+                  return (
+                    <div
+                      key={index}
+                      className="px-3 py-2 bg-[#2b364b] hover:bg-black duration-150  text-white cursor-pointer text-sm z-99 font-medium animate-slideIn [animation-fill-mode:backwards]"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                      onClick={() => {
+                        setPrompt(suggestion);
+                        setSuggestion(false);
+                        analyzePrompt(suggestion);
+                      }}
+                    >
+                      {suggestion}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1">
             <button
@@ -578,7 +862,7 @@ const Chart = ({
               Save as Image
             </button>{" "}
             <button
-              className="px-3 py-2 flex items-center gap-2 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
+              className="px-3 py-2 flex items-center gap-2 z-99 text-sm rounded-md bg-slate-700 hover:bg-slate-800 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
               style={{ animationDelay: "0.3s" }}
               onClick={() => chartToPDF()}
             >
@@ -589,24 +873,90 @@ const Chart = ({
         </div>
       </div>
 
-      <div className="px-6 flex items-center gap-4 mb-4 font-medium">
+      <div className="relative max-h-9 px-6 flex items-center gap-4 mb-4 font-medium">
         <label htmlFor="xAxis">X-Axis: </label>
-        <div className="flex">
-          <select
-            className="relative flex border-4 border-slate-200 rounded-md cursor-pointer"
-            id="xAxis"
-            onChange={(e) => setXAxisKey(e.target.value)}
-            value={xAxisKey}
-          >
-            {Object.keys(data[0] || {}).map((key) => (
-              <option key={key} value={key}>
-                {key}
-              </option>
-            ))}
-          </select>
-          {timePeriod && (
+        <div className="relative max-h-9 flex">
+          {chartType === "Bar" ? (
+            <div
+              className={`relative z-99 bg-white  hover:h-full overflow-clip flex flex-col gap-1 px-2 py-0.5 border-4 border-slate-200 rounded-md cursor-pointer transition-height duration-200`}
+              id="xAxis"
+              onMouseEnter={() => setXAxisMenu(true)}
+              onMouseLeave={() => setXAxisMenu(false)}
+              style={{
+                height: xAxisMenu
+                  ? "100%"
+                  : `${
+                      xAxisKey.length * 24 + (xAxisKey.length - 1) * 4 + 12
+                    }px`,
+              }}
+            >
+              {xAxisKey.map((key) => {
+                if (dataTypes[key] !== "number")
+                  return (
+                    <label
+                      key={key}
+                      className="flex items-center space-x-2 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        className="form-checkbox rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
+                        checked={xAxisKey.includes(key)}
+                        onChange={() => {
+                          if (xAxisKey.includes(key)) {
+                            setXAxisKey(xAxisKey.filter((k) => k !== key));
+                          } else setXAxisKey([...xAxisKey, key]);
+                        }}
+                      />
+                      <span className="text-slate-800">{key}</span>
+                    </label>
+                  );
+              })}
+              {Object.keys(data[0] || {}).map((key) => {
+                if (dataTypes[key] !== "number" && !xAxisKey.includes(key))
+                  return (
+                    <label
+                      key={key}
+                      className="flex items-center space-x-2 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        className="form-checkbox rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
+                        checked={xAxisKey.includes(key)}
+                        onChange={() => {
+                          if (xAxisKey.includes(key)) {
+                            setXAxisKey(xAxisKey.filter((k) => k !== key));
+                          } else setXAxisKey([...xAxisKey, key]);
+                        }}
+                      />
+                      <span className="text-slate-800">{key}</span>
+                    </label>
+                  );
+              })}
+            </div>
+          ) : (
             <select
               className="relative flex border-4 border-slate-200 rounded-md cursor-pointer"
+              id="xAxis"
+              onChange={(e) => setXAxisKey([...[], e.target.value])}
+              value={xAxisKey[0]}
+            >
+              {Object.keys(data[0] || {}).map((key) => {
+                if (dataTypes[key] !== "number")
+                  return (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  );
+              })}
+            </select>
+          )}
+          {timePeriod && (
+            <select
+              className={`relative ${
+                xAxisKey.length > 1 &&
+                dataTypes[xAxisKey[1]] === "date" &&
+                "top-7"
+              } flex border-4 border-slate-200 rounded-md cursor-pointer`}
               id="timePeriod"
               onChange={(e) => setPeriods(e.target.value)}
               value={periods}
@@ -620,26 +970,22 @@ const Chart = ({
           )}
         </div>
 
-        {chartType !== "Pie" && (
-          <>
-            <label htmlFor="yAxis">Y-Axis: </label>
-            <select
-              className="relative flex border-4 border-slate-200 rounded-md cursor-pointer"
-              id="yAxis"
-              onChange={(e) => setYAxisKey(e.target.value)}
-              value={yAxisKey}
-            >
-              {Object.keys(data[0] || {}).map((key) => {
-                if (dataTypes[key] === "number")
-                  return (
-                    <option key={key} value={key}>
-                      {key}
-                    </option>
-                  );
-              })}
-            </select>
-          </>
-        )}
+        <label htmlFor="yAxis">Y-Axis: </label>
+        <select
+          className="relative flex border-4 border-slate-200 rounded-md cursor-pointer"
+          id="yAxis"
+          onChange={(e) => setYAxisKey(e.target.value)}
+          value={yAxisKey}
+        >
+          {Object.keys(data[0] || {}).map((key) => {
+            if (dataTypes[key] === "number")
+              return (
+                <option key={key} value={key}>
+                  {key}
+                </option>
+              );
+          })}
+        </select>
       </div>
 
       {chartType === "Bar" && (
@@ -658,38 +1004,24 @@ const Chart = ({
           groupings={groupings}
           periods={periods}
           chartRef={ref}
+          CustomTooltip={CustomTooltip}
         />
       )}
 
       {chartType === "Pie" && (
-        <PieChart width={400} height={400}>
-          <Pie
-            dataKey={xAxisKey}
-            data={data}
-            cx="50%"
-            cy="50%"
-            outerRadius={150}
-            fill="#82ca9d"
-          >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={colors[index % colors.length]}
-              />
-            ))}
-          </Pie>
-          <Tooltip />
-        </PieChart>
-      )}
-
-      {chartType === "Scatter" && (
-        <ScatterChart width={830} height={350}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xAxisKey} className="font-medium" />
-          <YAxis dataKey={yAxisKey} className="font-medium" />
-          <Tooltip />
-          <Scatter data={data} fill="#8884d8" />
-        </ScatterChart>
+        <PiesChart
+          data={data}
+          timePeriod={timePeriod}
+          timeData={timeData}
+          formattedData={formattedData}
+          xAxisKey={xAxisKey}
+          yAxisKey={yAxisKey}
+          operation={operation}
+          total={total}
+          average={average}
+          chartRef={ref}
+          CustomTooltip={CustomTooltip}
+        />
       )}
     </div>
   );
