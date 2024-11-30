@@ -17,6 +17,7 @@ import PiesChart from "./PiesChart";
 const Chart = ({
   title,
   data,
+  setData,
   formattedData,
   setFormattedData,
   timeData,
@@ -24,7 +25,7 @@ const Chart = ({
   dataTypes,
   columns,
   sort,
-  setCopyData,
+  copyChartData,
   xAxisKey,
   setXAxisKey,
   yAxisKey,
@@ -33,9 +34,9 @@ const Chart = ({
   setOperation,
   timePeriod,
   setTimePeriod,
+  groupings,
 }) => {
   let initialData = [];
-  const copyData = [...formattedData];
   const [chartType, setChartType] = useState("Bar");
   const [periods, setPeriods] = useState("Monthly");
   const [createWithAI, setCreateWithAI] = useState(false);
@@ -53,18 +54,6 @@ const Chart = ({
     quality: 0.8,
     type: "image/jpg",
   });
-  const groupings = {
-    Daily: (date) => date.toISOString().split("T")[0],
-    Monthly: (date) => `${date.toLocaleString("default", { month: "short" })}`,
-    Quarterly: (date) => {
-      const month = new Date(date).getMonth();
-      if (month >= 0 && month <= 2) return "Q1";
-      else if (month >= 3 && month <= 5) return "Q2";
-      else if (month >= 6 && month <= 8) return "Q3";
-      return "Q4";
-    },
-    Yearly: (date) => `${new Date(date).getFullYear()}`,
-  };
   const createWithAIRef = useRef(null);
 
   useEffect(() => {
@@ -75,9 +64,11 @@ const Chart = ({
   }, []);
 
   useEffect(() => {
-    if (data && data.length > 0) {
-      if (!sort) initializeKeys(data[0]);
-      if (dataTypes !== undefined) {
+    if (!sort && data.length > 0) initializeKeys(data[0]);
+    if (dataTypes !== undefined) {
+      if (data.length === 0) {
+        setData([{ [xAxisKey]: xAxisKey, [yAxisKey]: "0" }]);
+      } else {
         formatData();
         handleTimePeriod();
       }
@@ -170,13 +161,13 @@ const Chart = ({
     if (dataTypes[xAxisKey[0]] === "date") {
       setTimeData(newData);
     }
-    setCopyData(newData);
   };
 
   const initializeKeys = (data) => {
     const keys = Object.keys(data);
     if (keys.length >= 2) {
-      if (!xAxisKey.includes(keys[0])) setXAxisKey([...xAxisKey, keys[0]]);
+      if (!xAxisKey.includes(keys[0]) && xAxisKey.length === 0)
+        setXAxisKey([...xAxisKey, keys[0]]);
       keys.forEach((key) => {
         if (dataTypes[key] === "number") setYAxisKey(key);
         return;
@@ -808,14 +799,14 @@ const Chart = ({
             >
               <FontAwesomeIcon icon={faXmark} />
             </button>
-            <button
+            {/* <button
               className="h-full w-full z-99 absolute top-10 px-3 py-2 flex justify-center gap-2 text-sm text-white font-medium rounded-md outline-none bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 duration-300 animate-slideDown [animation-fill-mode:backwards] caret-white cursor-pointer"
               onClick={() =>
                 filterSuggestion(timePeriod ? timeData : formattedData)
               }
             >
               Or Search / Filter
-            </button>
+            </button> */}
             {createWithAI && suggestion && (
               <div className="absolute top-10 bg-black z-99 flex flex-col gap-1 outline outline-2 outline-black rounded-md overflow-hidden">
                 <p className="px-3 py-1 z-99 text-white text-sm font-medium animate-slideIn flex items-center gap-1 [animation-fill-mode:backwards]">

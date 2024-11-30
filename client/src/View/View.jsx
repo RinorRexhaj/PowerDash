@@ -16,12 +16,14 @@ import Columns from "./Columns";
 import ImportExcel from "../components/ImportExcel";
 import Chart from "../Charts/Chart";
 import Sort from "../components/Sort";
+import FilterSearch from "../components/FilterSearch";
 
 const View = ({ type, data, setData, created, deleted }) => {
   const [chartData, setChartData] = useState([]);
   const [timeData, setTimeData] = useState([]);
   const [formattedData, setFormattedData] = useState([]);
   const [copyData, setCopyData] = useState([]);
+  const [copyChartData, setCopyChartData] = useState([]);
   const [dataTypes, setDataTypes] = useState(undefined);
   const [fileSelected, setFileSelected] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,19 @@ const View = ({ type, data, setData, created, deleted }) => {
   const [deletedRow, setDeletedRow] = useState(undefined);
   const inputRef = useRef();
   const views = ["Data", "Charts"];
+  const groupings = {
+    Daily: (date) => new Date(date).toISOString().split("T")[0],
+    Monthly: (date) =>
+      `${new Date(date).toLocaleString("default", { month: "short" })}`,
+    Quarterly: (date) => {
+      const month = new Date(date).getMonth();
+      if (month >= 0 && month <= 2) return "Q1";
+      else if (month >= 3 && month <= 5) return "Q2";
+      else if (month >= 6 && month <= 8) return "Q3";
+      return "Q4";
+    },
+    Yearly: (date) => `${new Date(date).getFullYear()}`,
+  };
 
   useEffect(() => {
     let localData = localStorage.getItem(type);
@@ -43,6 +58,7 @@ const View = ({ type, data, setData, created, deleted }) => {
     if (localData !== null && localData !== undefined && localData !== "") {
       localData = JSON.parse(localData);
       setData(localData);
+      setCopyData(localData);
       setColumns(localData[0]);
       arrayToObjectData(localData);
       inferDataTypes(localData);
@@ -58,7 +74,7 @@ const View = ({ type, data, setData, created, deleted }) => {
   }, [type]);
 
   useEffect(() => {
-    if (data.length > 0) {
+    if (data.length > 0 && dataTypes === undefined && columns.length === 0) {
       setColumns(data[0]);
       inferDataTypes(data);
       arrayToObjectData(data);
@@ -160,18 +176,18 @@ const View = ({ type, data, setData, created, deleted }) => {
   };
 
   const arrayToObjectData = (data) => {
-    setChartData(
-      data
-        .map((row, index) => {
-          if (index === 0) return;
-          let obj = {};
-          Object.entries(data[0]).map((el, idx) => {
-            obj = { ...obj, [el[1]]: row[idx] };
-          });
-          return obj;
-        })
-        .slice(1)
-    );
+    const newData = data
+      .map((row, index) => {
+        if (index === 0) return;
+        let obj = {};
+        Object.entries(data[0]).map((el, idx) => {
+          obj = { ...obj, [el[1]]: row[idx] };
+        });
+        return obj;
+      })
+      .slice(1);
+    setChartData(newData);
+    setCopyChartData(newData);
   };
 
   return (
@@ -200,23 +216,45 @@ const View = ({ type, data, setData, created, deleted }) => {
           </h1>
           <div className="flex items-center gap-4">
             {data.length > 0 && dataTypes !== undefined && (
-              <Sort
-                columns={columns}
-                view={view}
-                data={data}
-                setData={setData}
-                chartData={formattedData}
-                setChartData={setFormattedData}
-                timeData={timeData}
-                setTimeData={setTimeData}
-                dataTypes={dataTypes}
-                setSort={setSort}
-                xAxisKey={xAxisKey}
-                yAxisKey={yAxisKey}
-                operation={operation}
-                setFormattedData={setFormattedData}
-                copyData={copyData}
-              />
+              <div className="flex items-center gap-2">
+                <FilterSearch
+                  columns={columns}
+                  view={view}
+                  data={data}
+                  setData={setData}
+                  chartData={chartData}
+                  setChartData={setChartData}
+                  copyChartData={copyChartData}
+                  formattedData={formattedData}
+                  setFormattedData={setFormattedData}
+                  timeData={timeData}
+                  setTimeData={setTimeData}
+                  dataTypes={dataTypes}
+                  xAxisKey={xAxisKey}
+                  yAxisKey={yAxisKey}
+                  operation={operation}
+                  copyData={copyData}
+                  timePeriod={timePeriod}
+                  groupings={groupings}
+                />
+                <Sort
+                  columns={columns}
+                  view={view}
+                  data={data}
+                  setData={setData}
+                  chartData={formattedData}
+                  setChartData={setFormattedData}
+                  timeData={timeData}
+                  setTimeData={setTimeData}
+                  dataTypes={dataTypes}
+                  setSort={setSort}
+                  xAxisKey={xAxisKey}
+                  yAxisKey={yAxisKey}
+                  operation={operation}
+                  setFormattedData={setFormattedData}
+                  copyData={copyData}
+                />
+              </div>
             )}
             {data.length > 0 && (
               <div
@@ -313,6 +351,7 @@ const View = ({ type, data, setData, created, deleted }) => {
           <Chart
             title={type}
             data={chartData}
+            setData={setChartData}
             formattedData={formattedData}
             setFormattedData={setFormattedData}
             timeData={timeData}
@@ -320,7 +359,7 @@ const View = ({ type, data, setData, created, deleted }) => {
             dataTypes={dataTypes}
             columns={columns}
             sort={sort}
-            setCopyData={setCopyData}
+            copyChartData={copyChartData}
             xAxisKey={xAxisKey}
             setXAxisKey={setXAxisKey}
             yAxisKey={yAxisKey}
@@ -329,6 +368,7 @@ const View = ({ type, data, setData, created, deleted }) => {
             setOperation={setOperation}
             timePeriod={timePeriod}
             setTimePeriod={setTimePeriod}
+            groupings={groupings}
           />
         )}
       </div>
