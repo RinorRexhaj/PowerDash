@@ -6,8 +6,9 @@ import { faTable, faX } from "@fortawesome/free-solid-svg-icons";
 const ImportExcel = ({
   type,
   setData,
-  setLoading,
+  setCopyData,
   setFileSelected,
+  initData,
   setFileImported,
   inputRef,
 }) => {
@@ -75,9 +76,12 @@ const ImportExcel = ({
         });
       }
       const fixedData = cells.filter((row) => row.length > 0 && !emptyRow(row));
-      setData(fixedData);
-      localStorage.setItem(type, JSON.stringify(fixedData));
-      setFileImported(true);
+      const storageData = JSON.stringify(fixedData);
+      localStorage.setItem(type, storageData);
+      initData(storageData);
+      setTimeout(() => {
+        setFileSelected(false);
+      }, [200]);
     }
   };
 
