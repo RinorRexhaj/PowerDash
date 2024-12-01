@@ -14,14 +14,7 @@ const Filter = ({
   setData,
   copyData,
   copyChartData,
-  chartData,
   setChartData,
-  formattedData,
-  setFormattedData,
-  timeData,
-  setTimeData,
-  timePeriod,
-  yAxisKey,
   filterColumns,
   setFilterColumns,
   currentColumn,
@@ -30,9 +23,10 @@ const Filter = ({
   setCurrentValues,
   valueSet,
   setValueSet,
+  groupings,
+  timeFilter,
+  setTimeFilter,
 }) => {
-  const [timeFilter, setTimeFilter] = useState("");
-
   useEffect(() => {
     if (view === "Data") filterData();
     else filterCharts();
@@ -43,20 +37,26 @@ const Filter = ({
   }, [filter]);
 
   useEffect(() => {
-    if (currentValues.length !== 0) {
-      if (view === "Data") filterData();
-      else filterCharts();
-    }
-  }, [currentValues, filterColumns]);
+    filterData();
+    filterCharts();
+  }, [currentValues]);
 
   useEffect(() => {
-    if (timeFilter !== "") orderByTime();
+    filterData();
+    filterCharts();
+    orderByTime();
   }, [timeFilter]);
 
   const filterData = () => {
     const newData = [...copyData].slice(1).filter((row) => {
       for (let i = 0; i < row.length; i++) {
-        if (currentValues[i].includes(row[i])) return false;
+        const type = dataTypes[columns[i]];
+        if (
+          type === "date" &&
+          currentValues[i].includes(groupings[timeFilter](row[i]))
+        )
+          return false;
+        else if (currentValues[i].includes(row[i])) return false;
       }
       return true;
     });
@@ -69,7 +69,16 @@ const Filter = ({
       const entries = Object.entries(row);
       for (let i = 0; i < entries.length; i++) {
         const [key, value] = entries[i];
-        if (currentValues[columns.indexOf(key)].includes(value)) return false;
+        const type = dataTypes[key];
+        if (
+          type === "date" &&
+          currentValues[columns.indexOf(key)].includes(
+            groupings[timeFilter](value)
+          )
+        )
+          return false;
+        else if (currentValues[columns.indexOf(key)].includes(value))
+          return false;
       }
       return true;
     });
@@ -124,7 +133,7 @@ const Filter = ({
       );
     } else {
       const daySet = new Set();
-      [...data]
+      [...copyData]
         .slice(1)
         .map((day) => daySet.add(day[columns.indexOf(currentColumn)]));
       const sorted = Array.from(daySet).sort(
@@ -137,6 +146,14 @@ const Filter = ({
         })
       );
     }
+  };
+
+  const isChecked = (val) => {
+    const type = dataTypes[currentColumn];
+    const checked =
+      !currentValues[columns.indexOf(currentColumn)].includes(val);
+    if (type !== "date") return checked;
+    return checked;
   };
 
   return (
@@ -280,17 +297,9 @@ const Filter = ({
                     type="checkbox"
                     className="form-checkbox rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
                     id={val + "-filter"}
-                    checked={
-                      !currentValues[columns.indexOf(currentColumn)].includes(
-                        val
-                      )
-                    }
+                    checked={isChecked(val)}
                     onChange={() => {
-                      if (
-                        !currentValues[columns.indexOf(currentColumn)].includes(
-                          val
-                        )
-                      ) {
+                      if (isChecked(val)) {
                         setCurrentValues(
                           currentValues.map((values, index) => {
                             if (columns.indexOf(currentColumn) !== index)

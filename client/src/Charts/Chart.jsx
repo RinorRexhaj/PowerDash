@@ -25,7 +25,6 @@ const Chart = ({
   dataTypes,
   columns,
   sort,
-  copyChartData,
   xAxisKey,
   setXAxisKey,
   yAxisKey,
@@ -64,7 +63,6 @@ const Chart = ({
   }, []);
 
   useEffect(() => {
-    if (!sort && data.length > 0) initializeKeys(data[0]);
     if (dataTypes !== undefined) {
       if (data.length === 0) {
         setData([{ [xAxisKey]: xAxisKey, [yAxisKey]: "0" }]);
@@ -166,12 +164,11 @@ const Chart = ({
   const initializeKeys = (data) => {
     const keys = Object.keys(data);
     if (keys.length >= 2) {
-      if (!xAxisKey.includes(keys[0]) && xAxisKey.length === 0)
-        setXAxisKey([...xAxisKey, keys[0]]);
-      keys.forEach((key) => {
-        if (dataTypes[key] === "number") setYAxisKey(key);
-        return;
-      });
+      const xKey = keys.find((key) => dataTypes[key] !== "number");
+      const yKey = keys.find((key) => dataTypes[key] === "number");
+      if (!xAxisKey.includes(xKey) && xAxisKey.length === 0)
+        setXAxisKey([...[], xKey]);
+      setYAxisKey(yKey);
     }
   };
 

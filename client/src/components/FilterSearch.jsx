@@ -13,18 +13,10 @@ const FilterSearch = ({
   view,
   data,
   setData,
-  chartData,
   setChartData,
-  copyChartData,
-  formattedData,
-  setFormattedData,
-  timeData,
-  setTimeData,
-  dataTypes,
-  yAxisKey,
-  operation,
   copyData,
-  timePeriod,
+  copyChartData,
+  dataTypes,
   groupings,
 }) => {
   const [filter, setFilter] = useState(false);
@@ -32,23 +24,25 @@ const FilterSearch = ({
   const [currentColumn, setCurrentColumn] = useState("");
   const [currentValues, setCurrentValues] = useState([]);
   const [valueSet, setValueSet] = useState([]);
+  const [timeFilter, setTimeFilter] = useState("Daily");
   const [search, setSearch] = useState(false);
 
   useEffect(() => {
     initializeValues();
   }, []);
 
-  useEffect(() => {
-    initializeValues();
-  }, [view]);
-
   const initializeValues = () => {
     setFilter(false);
-    if (view === "Data") {
-      if (data.length > 0) setValues();
-    } else {
-      if (copyChartData.length > 0) setChartValues();
-    }
+    if (
+      copyData.length > 0 &&
+      !currentValues.some((values) => values.length > 0)
+    )
+      setValues();
+    if (
+      copyChartData.length > 0 &&
+      !currentValues.some((values) => values.length > 0)
+    )
+      setChartValues();
   };
 
   const setValues = () => {
@@ -76,11 +70,7 @@ const FilterSearch = ({
       });
     });
     setValueSet(sortedValues);
-    setCurrentValues(
-      Array(columns.length)
-        .fill(null)
-        .map(() => [])
-    );
+    setCurrentValues(columns.map(() => []));
   };
 
   const setChartValues = () => {
@@ -144,14 +134,7 @@ const FilterSearch = ({
           setData={setData}
           copyData={copyData}
           copyChartData={copyChartData}
-          chartData={chartData}
           setChartData={setChartData}
-          formattedData={formattedData}
-          setFormattedData={setFormattedData}
-          timeData={timeData}
-          setTimeData={setTimeData}
-          timePeriod={timePeriod}
-          yAxisKey={yAxisKey}
           filterColumns={filterColumns}
           setFilterColumns={setFilterColumns}
           currentColumn={currentColumn}
@@ -160,6 +143,9 @@ const FilterSearch = ({
           setCurrentValues={setCurrentValues}
           valueSet={valueSet}
           setValueSet={setValueSet}
+          groupings={groupings}
+          timeFilter={timeFilter}
+          setTimeFilter={setTimeFilter}
         />
       ) : (
         search && <Search />

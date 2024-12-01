@@ -6,6 +6,7 @@ import {
   faArrowDown19,
   faArrowDownAZ,
   faDownload,
+  faRefresh,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -56,30 +57,32 @@ const View = ({ type, data, setData, created, deleted }) => {
     let localData = localStorage.getItem(type);
     setSort(false);
     if (localData !== null && localData !== undefined && localData !== "") {
-      localData = JSON.parse(localData);
-      setData(localData);
-      setCopyData(localData);
-      setColumns(localData[0]);
-      arrayToObjectData(localData);
-      inferDataTypes(localData);
+      initData(localData);
     } else {
-      setData([]);
-      setColumns([]);
-      setChartData([]);
-      setFormattedData([]);
-      setDataTypes([]);
-      setCopyData([]);
+      resetData();
     }
     moment().format();
   }, [type]);
 
-  useEffect(() => {
-    if (data.length > 0 && dataTypes === undefined && columns.length === 0) {
-      setColumns(data[0]);
-      inferDataTypes(data);
-      arrayToObjectData(data);
-    }
-  }, [data]);
+  const initData = (localData) => {
+    localData = JSON.parse(localData);
+    setData(localData);
+    setCopyData(localData);
+    setColumns(localData[0]);
+    arrayToObjectData(localData);
+    inferDataTypes(localData);
+  };
+
+  const resetData = () => {
+    setData([]);
+    setColumns([]);
+    setChartData([]);
+    setFormattedData([]);
+    setDataTypes([]);
+    setCopyData([]);
+    localStorage.setItem(type, "");
+    setFileImported(false);
+  };
 
   const inferDataTypes = (data) => {
     const headers = data[0];
@@ -222,19 +225,10 @@ const View = ({ type, data, setData, created, deleted }) => {
                   view={view}
                   data={data}
                   setData={setData}
-                  chartData={chartData}
                   setChartData={setChartData}
-                  copyChartData={copyChartData}
-                  formattedData={formattedData}
-                  setFormattedData={setFormattedData}
-                  timeData={timeData}
-                  setTimeData={setTimeData}
-                  dataTypes={dataTypes}
-                  xAxisKey={xAxisKey}
-                  yAxisKey={yAxisKey}
-                  operation={operation}
                   copyData={copyData}
-                  timePeriod={timePeriod}
+                  copyChartData={copyChartData}
+                  dataTypes={dataTypes}
                   groupings={groupings}
                 />
                 <Sort
@@ -282,10 +276,15 @@ const View = ({ type, data, setData, created, deleted }) => {
             <button
               className="px-3 py-2 flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
               style={{ animationDelay: "0.5s" }}
-              onClick={openInput}
+              onClick={() => {
+                if (data.length === 0) openInput();
+                else resetData();
+              }}
             >
-              <FontAwesomeIcon icon={faDownload} />
-              Import Data
+              <FontAwesomeIcon
+                icon={data.length > 0 ? faRefresh : faDownload}
+              />
+              {data.length > 0 ? "Reset" : "Import"} Data
             </button>
           </div>
         </div>
@@ -305,14 +304,20 @@ const View = ({ type, data, setData, created, deleted }) => {
             <span className="w-full h-[0.5px] bg-slate-200"></span>
             <ImportExcel
               type={type}
+              initData={initData}
               setData={setData}
+              setCopyData={setCopyData}
               setFileSelected={setFileSelected}
               setFileImported={setFileImported}
               setLoading={setLoading}
               inputRef={inputRef}
             />
-            {loading ? (
-              <p className={`text-black font-bold`}>Loading...</p>
+            {fileSelected ? (
+              <p
+                className={`w-full flex justify-center mt-40 text-2xl text-black font-bold`}
+              >
+                Processing...
+              </p>
             ) : data.length === 0 || data[0].length === 0 ? (
               <div className="w-full flex justify-center mt-40">
                 {fileSelected ? (
