@@ -53,7 +53,11 @@ const Filter = ({
         const type = dataTypes[columns[i]];
         if (
           type === "date" &&
-          currentValues[i].includes(groupings[timeFilter](row[i]))
+          currentValues[i].includes(
+            timeFilter === "Yearly"
+              ? parseInt(groupings[timeFilter](row[i]))
+              : groupings[timeFilter](row[i])
+          )
         )
           return false;
         else if (currentValues[i].includes(row[i])) return false;
@@ -73,7 +77,9 @@ const Filter = ({
         if (
           type === "date" &&
           currentValues[columns.indexOf(key)].includes(
-            groupings[timeFilter](value)
+            timeFilter === "Yearly"
+              ? parseInt(groupings[timeFilter](value))
+              : groupings[timeFilter](value)
           )
         )
           return false;

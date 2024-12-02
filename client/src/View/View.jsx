@@ -80,8 +80,10 @@ const View = ({ type, data, setData, created, deleted }) => {
     setFormattedData([]);
     setDataTypes([]);
     setCopyData([]);
+    setCopyChartData([]);
     localStorage.setItem(type, "");
     setFileImported(false);
+    setView("Data");
   };
 
   const inferDataTypes = (data) => {

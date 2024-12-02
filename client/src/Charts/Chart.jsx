@@ -348,8 +348,8 @@ const Chart = ({
       average = 0;
     [...data].forEach((row) => {
       if (row[yAxisKey] !== undefined) {
-        total += row[yAxisKey];
-        average += row[yAxisKey];
+        total += parseFloat(row[yAxisKey]);
+        average += parseFloat(row[yAxisKey]);
       }
     });
     average /= data.length;
@@ -855,7 +855,7 @@ const Chart = ({
         <div className="relative max-h-9 flex">
           {chartType === "Bar" ? (
             <div
-              className={`relative z-99 bg-white  hover:h-full overflow-clip flex flex-col gap-1 px-2 py-0.5 border-4 border-slate-200 rounded-md cursor-pointer transition-height duration-200`}
+              className={`relative z-50 bg-white  hover:h-full overflow-clip flex flex-col gap-1 px-2 py-0.5 border-4 border-slate-200 rounded-md cursor-pointer transition-height duration-200`}
               id="xAxis"
               onMouseEnter={() => setXAxisMenu(true)}
               onMouseLeave={() => setXAxisMenu(false)}
