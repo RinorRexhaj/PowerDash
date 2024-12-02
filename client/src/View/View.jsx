@@ -6,6 +6,7 @@ import {
   faArrowDown19,
   faArrowDownAZ,
   faDownload,
+  faRefresh,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -16,12 +17,14 @@ import Columns from "./Columns";
 import ImportExcel from "../components/ImportExcel";
 import Chart from "../Charts/Chart";
 import Sort from "../components/Sort";
+import FilterSearch from "../components/FilterSearch";
 
 const View = ({ type, data, setData, created, deleted }) => {
   const [chartData, setChartData] = useState([]);
   const [timeData, setTimeData] = useState([]);
   const [formattedData, setFormattedData] = useState([]);
   const [copyData, setCopyData] = useState([]);
+  const [copyChartData, setCopyChartData] = useState([]);
   const [dataTypes, setDataTypes] = useState(undefined);
   const [fileSelected, setFileSelected] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,34 +39,50 @@ const View = ({ type, data, setData, created, deleted }) => {
   const [deletedRow, setDeletedRow] = useState(undefined);
   const inputRef = useRef();
   const views = ["Data", "Charts"];
+  const groupings = {
+    Daily: (date) => new Date(date).toISOString().split("T")[0],
+    Monthly: (date) =>
+      `${new Date(date).toLocaleString("default", { month: "short" })}`,
+    Quarterly: (date) => {
+      const month = new Date(date).getMonth();
+      if (month >= 0 && month <= 2) return "Q1";
+      else if (month >= 3 && month <= 5) return "Q2";
+      else if (month >= 6 && month <= 8) return "Q3";
+      return "Q4";
+    },
+    Yearly: (date) => `${new Date(date).getFullYear()}`,
+  };
 
   useEffect(() => {
     let localData = localStorage.getItem(type);
     setSort(false);
     if (localData !== null && localData !== undefined && localData !== "") {
-      localData = JSON.parse(localData);
-      setData(localData);
-      setColumns(localData[0]);
-      arrayToObjectData(localData);
-      inferDataTypes(localData);
+      initData(localData);
     } else {
-      setData([]);
-      setColumns([]);
-      setChartData([]);
-      setFormattedData([]);
-      setDataTypes([]);
-      setCopyData([]);
+      resetData();
     }
     moment().format();
   }, [type]);
 
-  useEffect(() => {
-    if (data.length > 0) {
-      setColumns(data[0]);
-      inferDataTypes(data);
-      arrayToObjectData(data);
-    }
-  }, [data]);
+  const initData = (localData) => {
+    localData = JSON.parse(localData);
+    setData(localData);
+    setCopyData(localData);
+    setColumns(localData[0]);
+    arrayToObjectData(localData);
+    inferDataTypes(localData);
+  };
+
+  const resetData = () => {
+    setData([]);
+    setColumns([]);
+    setChartData([]);
+    setFormattedData([]);
+    setDataTypes([]);
+    setCopyData([]);
+    localStorage.setItem(type, "");
+    setFileImported(false);
+  };
 
   const inferDataTypes = (data) => {
     const headers = data[0];
@@ -160,18 +179,18 @@ const View = ({ type, data, setData, created, deleted }) => {
   };
 
   const arrayToObjectData = (data) => {
-    setChartData(
-      data
-        .map((row, index) => {
-          if (index === 0) return;
-          let obj = {};
-          Object.entries(data[0]).map((el, idx) => {
-            obj = { ...obj, [el[1]]: row[idx] };
-          });
-          return obj;
-        })
-        .slice(1)
-    );
+    const newData = data
+      .map((row, index) => {
+        if (index === 0) return;
+        let obj = {};
+        Object.entries(data[0]).map((el, idx) => {
+          obj = { ...obj, [el[1]]: row[idx] };
+        });
+        return obj;
+      })
+      .slice(1);
+    setChartData(newData);
+    setCopyChartData(newData);
   };
 
   return (
@@ -200,23 +219,36 @@ const View = ({ type, data, setData, created, deleted }) => {
           </h1>
           <div className="flex items-center gap-4">
             {data.length > 0 && dataTypes !== undefined && (
-              <Sort
-                columns={columns}
-                view={view}
-                data={data}
-                setData={setData}
-                chartData={formattedData}
-                setChartData={setFormattedData}
-                timeData={timeData}
-                setTimeData={setTimeData}
-                dataTypes={dataTypes}
-                setSort={setSort}
-                xAxisKey={xAxisKey}
-                yAxisKey={yAxisKey}
-                operation={operation}
-                setFormattedData={setFormattedData}
-                copyData={copyData}
-              />
+              <div className="flex items-center gap-2">
+                <FilterSearch
+                  columns={columns}
+                  view={view}
+                  data={data}
+                  setData={setData}
+                  setChartData={setChartData}
+                  copyData={copyData}
+                  copyChartData={copyChartData}
+                  dataTypes={dataTypes}
+                  groupings={groupings}
+                />
+                <Sort
+                  columns={columns}
+                  view={view}
+                  data={data}
+                  setData={setData}
+                  chartData={formattedData}
+                  setChartData={setFormattedData}
+                  timeData={timeData}
+                  setTimeData={setTimeData}
+                  dataTypes={dataTypes}
+                  setSort={setSort}
+                  xAxisKey={xAxisKey}
+                  yAxisKey={yAxisKey}
+                  operation={operation}
+                  setFormattedData={setFormattedData}
+                  copyData={copyData}
+                />
+              </div>
             )}
             {data.length > 0 && (
               <div
@@ -244,10 +276,15 @@ const View = ({ type, data, setData, created, deleted }) => {
             <button
               className="px-3 py-2 flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium duration-200 animate-slideDown [animation-fill-mode:backwards]"
               style={{ animationDelay: "0.5s" }}
-              onClick={openInput}
+              onClick={() => {
+                if (data.length === 0) openInput();
+                else resetData();
+              }}
             >
-              <FontAwesomeIcon icon={faDownload} />
-              Import Data
+              <FontAwesomeIcon
+                icon={data.length > 0 ? faRefresh : faDownload}
+              />
+              {data.length > 0 ? "Reset" : "Import"} Data
             </button>
           </div>
         </div>
@@ -267,14 +304,20 @@ const View = ({ type, data, setData, created, deleted }) => {
             <span className="w-full h-[0.5px] bg-slate-200"></span>
             <ImportExcel
               type={type}
+              initData={initData}
               setData={setData}
+              setCopyData={setCopyData}
               setFileSelected={setFileSelected}
               setFileImported={setFileImported}
               setLoading={setLoading}
               inputRef={inputRef}
             />
-            {loading ? (
-              <p className={`text-black font-bold`}>Loading...</p>
+            {fileSelected ? (
+              <p
+                className={`w-full flex justify-center mt-40 text-2xl text-black font-bold`}
+              >
+                Processing...
+              </p>
             ) : data.length === 0 || data[0].length === 0 ? (
               <div className="w-full flex justify-center mt-40">
                 {fileSelected ? (
@@ -313,6 +356,7 @@ const View = ({ type, data, setData, created, deleted }) => {
           <Chart
             title={type}
             data={chartData}
+            setData={setChartData}
             formattedData={formattedData}
             setFormattedData={setFormattedData}
             timeData={timeData}
@@ -320,7 +364,7 @@ const View = ({ type, data, setData, created, deleted }) => {
             dataTypes={dataTypes}
             columns={columns}
             sort={sort}
-            setCopyData={setCopyData}
+            copyChartData={copyChartData}
             xAxisKey={xAxisKey}
             setXAxisKey={setXAxisKey}
             yAxisKey={yAxisKey}
@@ -329,6 +373,7 @@ const View = ({ type, data, setData, created, deleted }) => {
             setOperation={setOperation}
             timePeriod={timePeriod}
             setTimePeriod={setTimePeriod}
+            groupings={groupings}
           />
         )}
       </div>

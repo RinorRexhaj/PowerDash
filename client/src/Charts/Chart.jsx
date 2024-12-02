@@ -17,6 +17,7 @@ import PiesChart from "./PiesChart";
 const Chart = ({
   title,
   data,
+  setData,
   formattedData,
   setFormattedData,
   timeData,
@@ -24,7 +25,6 @@ const Chart = ({
   dataTypes,
   columns,
   sort,
-  setCopyData,
   xAxisKey,
   setXAxisKey,
   yAxisKey,
@@ -33,9 +33,9 @@ const Chart = ({
   setOperation,
   timePeriod,
   setTimePeriod,
+  groupings,
 }) => {
   let initialData = [];
-  const copyData = [...formattedData];
   const [chartType, setChartType] = useState("Bar");
   const [periods, setPeriods] = useState("Monthly");
   const [createWithAI, setCreateWithAI] = useState(false);
@@ -53,18 +53,6 @@ const Chart = ({
     quality: 0.8,
     type: "image/jpg",
   });
-  const groupings = {
-    Daily: (date) => date.toISOString().split("T")[0],
-    Monthly: (date) => `${date.toLocaleString("default", { month: "short" })}`,
-    Quarterly: (date) => {
-      const month = new Date(date).getMonth();
-      if (month >= 0 && month <= 2) return "Q1";
-      else if (month >= 3 && month <= 5) return "Q2";
-      else if (month >= 6 && month <= 8) return "Q3";
-      return "Q4";
-    },
-    Yearly: (date) => `${new Date(date).getFullYear()}`,
-  };
   const createWithAIRef = useRef(null);
 
   useEffect(() => {
@@ -74,26 +62,15 @@ const Chart = ({
     }
   }, []);
 
-  // useEffect(() => {
-  //   const fetchDataTypes = async () => {
-  //     try {
-  //       const openai = new OpenAI({
-  //         apiKey:
-  //           env.OPEN_AI_KEY,
-  //         dangerouslyAllowBrowser: true,
-  //       });
-  //       const response = await openai.chat.completions.create({
-  //         model: "gpt-4o-mini",
-  //         messages: [
-  //           { role: "system", content: "You are a helpful assistant." },
-  //           {
-  //             role: "user",
-  //             content:
-  //               "Return the data types of these columns in this array: " +
-  //               JSON.stringify(data[0]),
-  //           },
-  //         ],
-  //       });
+  useEffect(() => {
+    if (data && data.length > 0) {
+      if (!sort) initializeKeys(data[0]);
+      if (dataTypes !== undefined) {
+        formatData();
+        handleTimePeriod();
+      }
+    }
+  }, [data]);
 
   useEffect(() => {
     formatData();
@@ -181,17 +158,16 @@ const Chart = ({
     if (dataTypes[xAxisKey[0]] === "date") {
       setTimeData(newData);
     }
-    setCopyData(newData);
   };
 
   const initializeKeys = (data) => {
     const keys = Object.keys(data);
     if (keys.length >= 2) {
-      if (!xAxisKey.includes(keys[0])) setXAxisKey([...xAxisKey, keys[0]]);
-      keys.forEach((key) => {
-        if (dataTypes[key] === "number") setYAxisKey(key);
-        return;
-      });
+      const xKey = keys.find((key) => dataTypes[key] !== "number");
+      const yKey = keys.find((key) => dataTypes[key] === "number");
+      if (!xAxisKey.includes(xKey) && xAxisKey.length === 0)
+        setXAxisKey([...[], xKey]);
+      setYAxisKey(yKey);
     }
   };
 
@@ -819,14 +795,14 @@ const Chart = ({
             >
               <FontAwesomeIcon icon={faXmark} />
             </button>
-            <button
+            {/* <button
               className="h-full w-full z-99 absolute top-10 px-3 py-2 flex justify-center gap-2 text-sm text-white font-medium rounded-md outline-none bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 duration-300 animate-slideDown [animation-fill-mode:backwards] caret-white cursor-pointer"
               onClick={() =>
                 filterSuggestion(timePeriod ? timeData : formattedData)
               }
             >
               Or Search / Filter
-            </button>
+            </button> */}
             {createWithAI && suggestion && (
               <div className="absolute top-10 bg-black z-99 flex flex-col gap-1 outline outline-2 outline-black rounded-md overflow-hidden">
                 <p className="px-3 py-1 z-99 text-white text-sm font-medium animate-slideIn flex items-center gap-1 [animation-fill-mode:backwards]">
