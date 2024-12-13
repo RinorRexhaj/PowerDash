@@ -26,10 +26,17 @@ const FilterSearch = ({
   const [valueSet, setValueSet] = useState([]);
   const [timeFilter, setTimeFilter] = useState("Daily");
   const [search, setSearch] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     initializeValues();
   }, []);
+
+  useEffect(() => {
+    if (search) {
+      setShowSearch(true);
+    }
+  }, [search]);
 
   const initializeValues = () => {
     setFilter(false);
@@ -113,7 +120,10 @@ const FilterSearch = ({
             : "bg-cyan-500"
         }  rounded-l-sm text-white font-medium text-left hover:bg-cyan-600 duration-150 animate-slideIn [animation-fill-mode:backwards]`}
         style={{ animationDelay: "1.1s" }}
-        onClick={() => setFilter(!filter)}
+        onClick={() => {
+          setFilter(!filter);
+          setSearch(false);
+        }}
       >
         Filter <FontAwesomeIcon icon={faFilter} />
       </button>
@@ -121,6 +131,10 @@ const FilterSearch = ({
       <button
         className="w-24 py-1 px-3 flex gap-2 items-center bg-emerald-400 rounded-r-sm text-white font-medium text-left hover:bg-emerald-500 duration-150 animate-slideIn [animation-fill-mode:backwards]"
         style={{ animationDelay: "1.2s" }}
+        onClick={() => {
+          setSearch(!search);
+          setFilter(false);
+        }}
       >
         Search <FontAwesomeIcon icon={faMagnifyingGlassChart} />
       </button>
@@ -148,7 +162,7 @@ const FilterSearch = ({
           setTimeFilter={setTimeFilter}
         />
       ) : (
-        search && <Search />
+        search && <Search search={search} setSearch={setSearch} data={data} />
       )}
     </div>
   );

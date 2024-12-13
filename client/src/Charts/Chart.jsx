@@ -63,10 +63,9 @@ const Chart = ({
   }, []);
 
   useEffect(() => {
-    if (dataTypes !== undefined) {
-      if (data.length === 0) {
-        setData([{ [xAxisKey]: xAxisKey, [yAxisKey]: "0" }]);
-      } else {
+    if (data && data.length > 0) {
+      if (!sort) initializeKeys(data[0]);
+      if (dataTypes !== undefined) {
         formatData();
         handleTimePeriod();
       }
