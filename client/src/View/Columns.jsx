@@ -14,6 +14,7 @@ const Columns = ({
   const [edited, setEdited] = useState(-1);
 
   const deleteColumn = (col) => {
+    setColumns(columns.filter((c, index) => index !== col));
     setData(
       data.map((cell) => {
         const newCell = [];

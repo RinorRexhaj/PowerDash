@@ -17,6 +17,10 @@ const Sort = ({
   setTimeData,
   dataTypes,
   setSort,
+  sortType,
+  setSortType,
+  sortColumn,
+  setSortColumn,
   xAxisKey,
   yAxisKey,
   operation,
@@ -24,8 +28,6 @@ const Sort = ({
   copyData,
 }) => {
   const [sorted, setSorted] = useState(false);
-  const [sortType, setSortType] = useState(false);
-  const [sortColumn, setSortColumn] = useState("");
 
   useEffect(() => {
     if (view === "Charts") {
