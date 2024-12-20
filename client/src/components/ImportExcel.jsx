@@ -3,15 +3,7 @@ import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTable, faX } from "@fortawesome/free-solid-svg-icons";
 
-const ImportExcel = ({
-  type,
-  setData,
-  setCopyData,
-  setFileSelected,
-  initData,
-  setFileImported,
-  inputRef,
-}) => {
+const ImportExcel = ({ type, setFileSelected, initData, inputRef }) => {
   const [sheetNames, setSheetNames] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [fileData, setFileData] = useState(null);
@@ -77,11 +69,13 @@ const ImportExcel = ({
       }
       const fixedData = cells.filter((row) => row.length > 0 && !emptyRow(row));
       const storageData = JSON.stringify(fixedData);
-      localStorage.setItem(type, storageData);
-      initData(storageData);
-      setTimeout(() => {
-        setFileSelected(false);
-      }, [200]);
+      if (type !== "" && type !== undefined && type !== null) {
+        localStorage.setItem(type, storageData);
+        initData(storageData);
+        setTimeout(() => {
+          setFileSelected(false);
+        }, [200]);
+      }
     }
   };
 
