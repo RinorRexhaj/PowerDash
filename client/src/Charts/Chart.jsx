@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, act } from "react";
 import axios from "axios";
 import BarsChart from "./BarsChart";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,6 +24,7 @@ const Chart = ({
   setTimeData,
   dataTypes,
   columns,
+  formattedColumns,
   sort,
   xAxisKey,
   setXAxisKey,
@@ -347,8 +348,8 @@ const Chart = ({
       average = 0;
     [...data].forEach((row) => {
       if (row[yAxisKey] !== undefined) {
-        total += row[yAxisKey];
-        average += row[yAxisKey];
+        total += parseFloat(row[yAxisKey]);
+        average += parseFloat(row[yAxisKey]);
       }
     });
     average /= data.length;
@@ -460,25 +461,23 @@ const Chart = ({
     setSuggestion(false);
     setPrompt("");
     setAnalyzing(true);
-    const cols = [...columns].map((col) => {
-      col = col.replace(/([a-z])([A-Z])/g, "$1 $2");
-      col = col.replace(/[_-]/g, " ");
-      return col.toLowerCase().trim();
-    });
-    const formattedColumns = await axios
-      .post("http://127.0.0.1:5000/lemma", { columns: cols })
-      .then((res) => res.data);
-    let words, synoyms;
+    let words, actions, entities, parameters;
     await axios
       .post("http://127.0.0.1:5000/prompt", {
         prompt,
       })
       .then((res) => {
         words = res.data.words;
-        synoyms = res.data.synonyms;
+        actions = res.data.actions;
+        entities = res.data.entities;
+        parameters = res.data.parameters;
       });
+    console.log(formattedColumns);
     console.log(words);
-    let chartType, xAxis, yAxis, operation, timePeriod, sort;
+    console.log(actions);
+    console.log(entities);
+    console.log(parameters);
+    let chartType, xAxis, yAxis, operation, timePeriod;
     words.forEach((word) => {
       chartTypes.forEach((type) => {
         if (word.word === type.toLowerCase()) chartType = type;
@@ -487,19 +486,23 @@ const Chart = ({
         if (word.word === op.toLowerCase()) operation = op;
       });
       for (const [index, col] of formattedColumns.entries()) {
-        for (const w of col.split(" ")) {
-          if (w === word.word && dataTypes[columns[index]] === "number") {
-            yAxis = columns[index];
-            return;
-          }
+        const colWords = col.split(" ");
+        const matchesAll = colWords.every((w) => prompt.includes(w));
+        if (matchesAll && dataTypes[columns[index]] === "number") {
+          yAxis = columns[index];
+          return;
+        } else {
+          yAxis = columns[index];
         }
       }
       for (const [index, col] of formattedColumns.entries()) {
-        for (const w of col.split(" ")) {
-          if (w === word.word || word.word.includes(w)) {
-            xAxis = columns[index];
-            return;
-          }
+        const colWords = col.split(" ");
+        const matchesAll = colWords.every((w) => prompt.includes(w));
+        if (matchesAll && dataTypes[columns[index]] === "number") {
+          xAxis = columns[index];
+          return;
+        } else {
+          xAxis = columns[index];
         }
       }
       for (const [index, period] of [
@@ -533,7 +536,7 @@ const Chart = ({
       }
       if (timePeriod !== undefined) setPeriods(timePeriod);
       setAnalyzing(false);
-    }, 800);
+    }, 300);
   };
 
   const createSuggestion = () => {
@@ -854,7 +857,7 @@ const Chart = ({
         <div className="relative max-h-9 flex">
           {chartType === "Bar" ? (
             <div
-              className={`relative z-99 bg-white  hover:h-full overflow-clip flex flex-col gap-1 px-2 py-0.5 border-4 border-slate-200 rounded-md cursor-pointer transition-height duration-200`}
+              className={`relative z-50 bg-white  hover:h-full overflow-clip flex flex-col gap-1 px-2 py-0.5 border-4 border-slate-200 rounded-md cursor-pointer transition-height duration-200`}
               id="xAxis"
               onMouseEnter={() => setXAxisMenu(true)}
               onMouseLeave={() => setXAxisMenu(false)}

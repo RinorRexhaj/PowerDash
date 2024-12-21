@@ -16,16 +16,23 @@ const App = () => {
   const [data, setData] = useState([]);
   const [searchData, setSearchData] = useState([]);
   const [search, setSearch] = useState("");
-  const [views, setViews] = useState([
-    { dest: "Dashboard" },
-    { dest: "Products" },
-  ]);
+  const [views, setViews] = useState([]);
   const searchRef = useRef();
 
   useEffect(() => {
-    document.addEventListener("keyup", (e) => {
+    const handleKeyUp = (e) => {
       if (e.key === "/") searchRef.current.focus();
+    };
+    document.addEventListener("keyup", handleKeyUp);
+    const initViews = [];
+    Object.entries(localStorage).forEach(([key, value]) => {
+      if (key !== "") initViews.push({ dest: key });
     });
+    if (initViews.length > 0) {
+      setViews(initViews.sort((a, b) => a.dest.localeCompare(b.dest)));
+      // window.location.href = "/" + initViews[0].dest.toLowerCase();
+    }
+    return () => document.removeEventListener("keyup", handleKeyUp);
   }, []);
 
   const toggleSidebar = () => {

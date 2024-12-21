@@ -6,15 +6,9 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 const Filter = ({
-  view,
   dataTypes,
   filter,
   columns,
-  data,
-  setData,
-  copyData,
-  copyChartData,
-  setChartData,
   filterColumns,
   setFilterColumns,
   currentColumn,
@@ -22,132 +16,10 @@ const Filter = ({
   currentValues,
   setCurrentValues,
   valueSet,
-  setValueSet,
-  groupings,
+  setFilter,
   timeFilter,
   setTimeFilter,
 }) => {
-  useEffect(() => {
-    if (view === "Data") filterData();
-    else filterCharts();
-  }, [view]);
-
-  useEffect(() => {
-    setCurrentColumn("");
-  }, [filter]);
-
-  useEffect(() => {
-    filterData();
-    filterCharts();
-  }, [currentValues]);
-
-  useEffect(() => {
-    filterData();
-    filterCharts();
-    orderByTime();
-  }, [timeFilter]);
-
-  const filterData = () => {
-    const newData = [...copyData].slice(1).filter((row) => {
-      for (let i = 0; i < row.length; i++) {
-        const type = dataTypes[columns[i]];
-        if (
-          type === "date" &&
-          currentValues[i].includes(groupings[timeFilter](row[i]))
-        )
-          return false;
-        else if (currentValues[i].includes(row[i])) return false;
-      }
-      return true;
-    });
-    newData.unshift(columns);
-    setData(newData);
-  };
-
-  const filterCharts = () => {
-    const newData = [...copyChartData].filter((row) => {
-      const entries = Object.entries(row);
-      for (let i = 0; i < entries.length; i++) {
-        const [key, value] = entries[i];
-        const type = dataTypes[key];
-        if (
-          type === "date" &&
-          currentValues[columns.indexOf(key)].includes(
-            groupings[timeFilter](value)
-          )
-        )
-          return false;
-        else if (currentValues[columns.indexOf(key)].includes(value))
-          return false;
-      }
-      return true;
-    });
-    setChartData(newData);
-  };
-
-  const orderByTime = () => {
-    if (timeFilter === "Monthly") {
-      const monthOrder = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      setValueSet(
-        valueSet.map((set, index) => {
-          if (index === columns.indexOf(currentColumn)) return monthOrder;
-          return set;
-        })
-      );
-    } else if (timeFilter === "Quarterly") {
-      setValueSet(
-        valueSet.map((set, index) => {
-          if (index === columns.indexOf(currentColumn))
-            return ["Q1", "Q2", "Q3", "Q4"];
-          return set;
-        })
-      );
-    } else if (timeFilter === "Yearly") {
-      const yearSet = new Set();
-      [...data]
-        .slice(1)
-        .map((item) =>
-          yearSet.add(
-            new Date(item[columns.indexOf(currentColumn)]).getFullYear()
-          )
-        );
-      const sorted = Array.from(yearSet).sort((a, b) => a - b);
-      setValueSet(
-        valueSet.map((set, index) => {
-          if (index === columns.indexOf(currentColumn)) return sorted;
-          return set;
-        })
-      );
-    } else {
-      const daySet = new Set();
-      [...copyData]
-        .slice(1)
-        .map((day) => daySet.add(day[columns.indexOf(currentColumn)]));
-      const sorted = Array.from(daySet).sort(
-        (a, b) => new Date(a).getTime() - new Date(b).getTime()
-      );
-      setValueSet(
-        valueSet.map((set, index) => {
-          if (index === columns.indexOf(currentColumn)) return sorted;
-          return set;
-        })
-      );
-    }
-  };
-
   const isChecked = (val) => {
     const type = dataTypes[currentColumn];
     const checked =
@@ -159,11 +31,14 @@ const Filter = ({
   return (
     <>
       <div
-        className={`absolute w-full z-999 left-0 top-10 animate-fade flex-col bg-white border-2 border-slate-200 shadow-3 rounded-sm duration-300`}
+        className={`absolute w-full z-999 left-0 top-10 animate-fade flex-col bg-white border-2 border-slate-200 shadow-3 rounded-sm duration-300 ${
+          filter ? "flex" : "hidden"
+        }`}
       >
         <button
           className={`min-w-40 rounded-sm font-medium py-1 px-2 text-left text-black hover:bg-slate-200 duration-200`}
           onClick={() => {
+            setFilter(false);
             setFilterColumns([]);
             setCurrentColumn("");
             setCurrentValues(

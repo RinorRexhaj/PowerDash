@@ -32,6 +32,9 @@ const View = ({ type, data, setData, created, deleted }) => {
   const [columns, setColumns] = useState([]);
   const [view, setView] = useState("Data");
   const [sort, setSort] = useState(false);
+  const [sortType, setSortType] = useState(false);
+  const [sortColumn, setSortColumn] = useState("");
+  const [formattedColumns, setFormattedColumns] = useState([]);
   const [operation, setOperation] = useState("Total");
   const [xAxisKey, setXAxisKey] = useState([]);
   const [yAxisKey, setYAxisKey] = useState("");
@@ -71,6 +74,7 @@ const View = ({ type, data, setData, created, deleted }) => {
     setColumns(localData[0]);
     arrayToObjectData(localData);
     inferDataTypes(localData);
+    getFormattedColumns(localData[0]);
   };
 
   const resetData = () => {
@@ -80,8 +84,10 @@ const View = ({ type, data, setData, created, deleted }) => {
     setFormattedData([]);
     setDataTypes([]);
     setCopyData([]);
+    setCopyChartData([]);
     localStorage.setItem(type, "");
     setFileImported(false);
+    setView("Data");
   };
 
   const inferDataTypes = (data) => {
@@ -139,6 +145,19 @@ const View = ({ type, data, setData, created, deleted }) => {
       inferredTypes[header] = dominantType;
     }
     setDataTypes(inferredTypes);
+  };
+
+  const getFormattedColumns = async (columns) => {
+    const cols = [...columns].map((col) => {
+      col = col.replace(/([a-z])([A-Z])/g, "$1 $2");
+      col = col.replace(/[_-]/g, " ");
+      return col.toLowerCase().trim();
+    });
+    setFormattedColumns(
+      await axios.post("http://127.0.0.1:5000/lemma", { cols }).then((res) => {
+        return res.data;
+      })
+    );
   };
 
   const openInput = () => {
@@ -230,6 +249,10 @@ const View = ({ type, data, setData, created, deleted }) => {
                   copyChartData={copyChartData}
                   dataTypes={dataTypes}
                   groupings={groupings}
+                  formattedColumns={formattedColumns}
+                  setSort={setSort}
+                  setSortType={setSortType}
+                  setSortColumn={setSortColumn}
                 />
                 <Sort
                   columns={columns}
@@ -242,6 +265,10 @@ const View = ({ type, data, setData, created, deleted }) => {
                   setTimeData={setTimeData}
                   dataTypes={dataTypes}
                   setSort={setSort}
+                  sortType={sortType}
+                  setSortType={setSortType}
+                  sortColumn={sortColumn}
+                  setSortColumn={setSortColumn}
                   xAxisKey={xAxisKey}
                   yAxisKey={yAxisKey}
                   operation={operation}
