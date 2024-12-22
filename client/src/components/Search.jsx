@@ -407,23 +407,53 @@ const Search = ({
   const createSuggestion = useCallback(() => {
     if (!data || data.length === 0) return [];
 
-    const suggestions = [];
     const columns = data[0];
     const rows = data.slice(1);
 
-    columns.forEach((column, index) => {
-      if (index < 3) {
-        suggestions.push(`Show all data in the "${column}" column`);
-        suggestions.push(`Find unique values in "${column}"`);
+    const columnTypes = columns.map((column, colIndex) => {
+      const sampleValues = rows.map((row) => row[colIndex]);
+      if (
+        sampleValues.every((val) => !isNaN(val) && val !== null && val !== "")
+      ) {
+        return "number";
       }
-
-      // if (rows.every((row) => !isNaN(row[index]))) {
-      //   suggestions.push(`Calculate the average of "${column}"`);
-      //   suggestions.push(`Find the maximum value in "${column}"`);
-      // }
+      return "text";
     });
 
-    return suggestions;
+    const numberSuggestions = [];
+    const generalSuggestions = [];
+
+    const getRandomValues = (values) => {
+      const uniqueValues = [...new Set(values)];
+      if (uniqueValues.length < 2) return [uniqueValues[0], uniqueValues[0]];
+      const shuffled = uniqueValues.sort(() => 0.5 - Math.random());
+      const [val1, val2] = shuffled.slice(0, 2);
+      return [Math.min(val1, val2), Math.max(val1, val2)];
+    };
+
+    columnTypes.forEach((type, index) => {
+      const column = columns[index];
+      const columnValues = rows
+        .map((row) => row[index])
+        .filter((val) => !isNaN(val));
+
+      if (type === "number") {
+        const [value1, value2] = getRandomValues(columnValues);
+        numberSuggestions.push(
+          `Select top 10 rows from "${column}"`,
+          `Filter "${column}" between "${value1}" and "${value2}"`
+        );
+      }
+
+      generalSuggestions.push(`Sort rows by "${column}" in ascending order`);
+    });
+
+    const prioritizedSuggestions = [
+      ...numberSuggestions,
+      ...generalSuggestions,
+    ];
+
+    return [...new Set(prioritizedSuggestions)].slice(0, 3);
   }, [data]);
 
   return (
@@ -468,7 +498,7 @@ const Search = ({
         <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" />
       </button>
       {!isTyping && (
-        <>
+        <div className="overflow-y-auto h-50">
           <p className="px-3 py-1 z-99 text-white text-sm font-medium animate-slideIn flex items-center gap-1 [animation-fill-mode:backwards]">
             <FontAwesomeIcon icon={faLightbulb} />
             Suggestions
@@ -477,7 +507,7 @@ const Search = ({
             return (
               <div
                 key={index}
-                className="px-3 py-2 bg-[#2b364b] hover:bg-black duration-150  text-white cursor-pointer text-sm z-99 font-medium animate-slideIn [animation-fill-mode:backwards]"
+                className="px-3 py-2  bg-[#2b364b] hover:bg-black duration-150  text-white cursor-pointer text-sm z-99 font-medium animate-slideIn [animation-fill-mode:backwards]"
                 style={{ animationDelay: `${index * 0.1}s` }}
                 onClick={() => {
                   setPrompt(suggestion);
@@ -489,7 +519,7 @@ const Search = ({
               </div>
             );
           })}
-        </>
+        </div>
       )}
     </div>
   );
