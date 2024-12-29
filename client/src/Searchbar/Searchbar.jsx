@@ -17,7 +17,15 @@ import { Link } from "react-router-dom";
 import Modal from "../components/Modal";
 import Chat from "./Chat";
 
-const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
+const Searchbar = ({
+  search,
+  setSearch,
+  data,
+  setData,
+  copyData,
+  toggleSidebar,
+  searchRef,
+}) => {
   const [menu, setMenu] = useState(false);
   const [chat, setChat] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -58,6 +66,17 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
     };
   }, [modalVisible]);
 
+  const filterSearch = (value) => {
+    const newData = [...copyData].slice(1).filter((row) => {
+      for (const val of row) {
+        if (val.toLowerCase().includes(value.toLowerCase())) return true;
+      }
+      return false;
+    });
+    newData.unshift(copyData[0]);
+    setData(newData);
+  };
+
   const toggleMenu = () => {
     setMenu(!menu);
   };
@@ -95,12 +114,12 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
           defaultValue={search}
           ref={searchRef}
           name="search"
-          onChange={(e) => searchFilter(e.target.value)}
+          onChange={(e) => filterSearch(e.target.value)}
           onFocus={() => setInputFocused(true)}
           onBlur={() => setInputFocused(false)}
         />
       </div>
-      <div className="flex gap-5 md:gap-3 sm:absolute sm:right-0 z-10">
+      {/* <div className="flex gap-5 md:gap-3 sm:absolute sm:right-0 z-10">
         <FontAwesomeIcon
           icon={faBell}
           className="w-5 h-5 text-slate-600 bg-slate-300  hover:bg-slate-400 ease-in duration-150 p-3 rounded-full cursor-pointer"
@@ -128,7 +147,7 @@ const Searchbar = ({ search, setSearch, toggleSidebar, searchRef }) => {
           className="w-5 h-5 text-slate-600 p-3 rounded-full cursor-pointer sm:hidden"
           onClick={toggleMenu}
         />
-      </div>
+      </div> */}
       <div
         className={`w-60 md:w-50 flex flex-col items-start absolute bg-white top-[101px] right-10 shadow-2 p-4 gap-5 ${
           menu ? "opacity-100 z-9" : "opacity-0 -z-9"

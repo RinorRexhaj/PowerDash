@@ -1,41 +1,56 @@
 import * as XLSX from "xlsx";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTable, faX } from "@fortawesome/free-solid-svg-icons";
+import { toast } from "react-toastify";
 
 const ImportExcel = ({ type, setFileSelected, initData, inputRef }) => {
   const [sheetNames, setSheetNames] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState("");
   const [fileData, setFileData] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const toastId = useRef(null);
   let minColumn, maxColumn;
   let minRow, maxRow;
   let cells = [];
+  const toastStyle = {
+    position: "top-left",
+    progressStyle: { background: "#3b82f6" },
+    theme: "dark",
+    autoClose: 2500,
+    className:
+      "relative w-64 bottom-6 ml-3 bg-black shadow-sm shadow-slate-400/20 font-medium",
+  };
 
   const handleFileUpload = (e) => {
-    const reader = new FileReader();
-    const file = e.target.files[0];
+    try {
+      const reader = new FileReader();
+      const file = e.target.files[0];
 
-    if (!file) return;
-    setFileSelected(true);
+      if (!file) return;
+      setFileSelected(true);
 
-    reader.readAsArrayBuffer(file);
-    // reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
+      // reader.readAsBinaryString(file);
 
-    reader.onload = (e) => {
-      const data = e.target.result;
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheets = workbook.SheetNames;
-      setSheetNames(sheets);
-      setFileData(workbook);
+      reader.onload = (e) => {
+        const data = e.target.result;
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheets = workbook.SheetNames;
+        setSheetNames(sheets);
+        setFileData(workbook);
 
-      if (sheets.length === 1) {
-        setSelectedSheet(sheets[0]);
-        processSheetData(workbook, sheets[0]);
-      } else {
-        setModalVisible(true);
-      }
-    };
+        if (sheets.length === 1) {
+          setSelectedSheet(sheets[0]);
+          processSheetData(workbook, sheets[0]);
+        } else {
+          setModalVisible(true);
+        }
+      };
+    } catch (e) {
+      toast.dismiss(toastId.current);
+      toastId.current = toast.error("Something went wrong!", toastStyle);
+    }
   };
 
   const handleSheetChange = (sheetName) => {
@@ -50,32 +65,60 @@ const ImportExcel = ({ type, setFileSelected, initData, inputRef }) => {
       const merges =
         sheet["!merges"] !== undefined &&
         sheet["!merges"].sort((a, b) => a.s.r - b.s.r);
-      setBoundaries(sheet);
-      cells.length = maxRow - minRow + 1;
-      for (let i = 0; i < cells.length; i++) {
-        cells[i] = [];
-        for (let j = 0; j < maxColumn - minColumn + 1; j++) cells[i][j] = "";
-      }
-      setValues(sheet);
-      if (merges) {
-        merges.forEach((m) => {
-          const val = cells[m.s.r - minRow][m.s.c - minColumn];
-          for (let i = m.s.r; i <= m.e.r; i++) {
-            for (let j = m.s.c; j <= m.e.c; j++) {
-              cells[i - minRow][j - minColumn] = val;
+      const boundaries = setBoundaries(sheet);
+      if (boundaries === 0) {
+        cells.length = maxRow - minRow + 1;
+        for (let i = 0; i < cells.length; i++) {
+          cells[i] = [];
+          for (let j = 0; j < maxColumn - minColumn + 1; j++) cells[i][j] = "";
+        }
+        setValues(sheet);
+        if (merges) {
+          merges.forEach((m) => {
+            const val = cells[m.s.r - minRow][m.s.c - minColumn];
+            for (let i = m.s.r; i <= m.e.r; i++) {
+              for (let j = m.s.c; j <= m.e.c; j++) {
+                cells[i - minRow][j - minColumn] = val;
+              }
             }
-          }
+          });
+        }
+        const fixedData = cells.filter(
+          (row) => row.length > 0 && !emptyRow(row)
+        );
+        const storageData = JSON.stringify(fixedData);
+        if (type !== "" && type !== undefined && type !== null) {
+          localStorage.setItem(type, storageData);
+          initData(storageData);
+        }
+        toast.dismiss(toastId.current);
+        toastId.current = toast.success("Successfully imported!", {
+          position: "top-right",
+          progressStyle: { background: "#3b82f6" },
+          theme: "dark",
+          autoClose: 2500,
+          className:
+            "relative w-64 bottom-6 left-16 bg-black shadow-sm shadow-slate-400/20 font-medium",
         });
+      } else {
+        toast.dismiss(toastId.current);
+        toastId.current = toast.error(
+          `The file contains too many ${
+            boundaries === 1 ? "rows" : "columns"
+          }!`,
+          {
+            position: "top-right",
+            progressStyle: { background: "#3b82f6" },
+            theme: "dark",
+            autoClose: 2500,
+            className:
+              "relative w-64 bottom-6 left-16 bg-black shadow-sm shadow-slate-400/20 font-medium",
+          }
+        );
       }
-      const fixedData = cells.filter((row) => row.length > 0 && !emptyRow(row));
-      const storageData = JSON.stringify(fixedData);
-      if (type !== "" && type !== undefined && type !== null) {
-        localStorage.setItem(type, storageData);
-        initData(storageData);
-        setTimeout(() => {
-          setFileSelected(false);
-        }, [200]);
-      }
+      setTimeout(() => {
+        setFileSelected(false);
+      }, [200]);
     }
   };
 
@@ -95,6 +138,9 @@ const ImportExcel = ({ type, setFileSelected, initData, inputRef }) => {
       if (row < minRow || minRow === undefined) minRow = row;
       else if (row > maxRow || maxRow === undefined) maxRow = row;
     });
+    if (maxRow > 1000) return 1;
+    else if (maxColumn > 10) return -1;
+    else return 0;
   };
 
   const setValues = (sheet) => {

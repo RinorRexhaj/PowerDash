@@ -27,14 +27,14 @@ const Row = ({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      {hover && (
+      {/* {hover && (
         <button
           className="absolute left-0 px-2 py-1 rounded-sm bg-red-500 hover:bg-red-600 text-white duration-150 animate-fade"
           onClick={() => deleteRow(index)}
         >
           <FontAwesomeIcon icon={faTrash} />
         </button>
-      )}
+      )} */}
       {Object.entries(element).map(([key, value], idx) => {
         return (
           <Cell

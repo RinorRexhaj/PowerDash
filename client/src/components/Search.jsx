@@ -3,6 +3,7 @@ import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLightbulb, faXmark } from "@fortawesome/free-solid-svg-icons";
 import currency from "currency.js";
+import { toast } from "react-toastify";
 
 const Search = ({
   search,
@@ -149,6 +150,10 @@ const Search = ({
         "earliest",
       ],
     },
+    // {
+    //   type: "where",
+    //   actions: ["select", "filter"],
+    // },
     {
       type: "ascending",
       actions: ["sort"],
@@ -193,17 +198,37 @@ const Search = ({
     if (search) promptRef.current.focus();
   }, [search]);
 
-  const analyzePrompt = async () => {
-    let words, tokens, entities;
+  const analyzePrompt = async (suggestion) => {
+    setAnalyzing(true);
+    let words, tokens;
     let result = [];
     const maxLength = Math.max(
       ...formattedColumns.map((col) => col.split(" ").length)
     );
-    await axios.post("http://127.0.0.1:5000/prompt", { prompt }).then((res) => {
-      words = res.data.words.map((word) => word["word"]);
-      tokens = res.data.words.map((word) => word["a_text"]);
-      entities = res.data.entities;
-    });
+    await axios
+      .post("http://127.0.0.1:5000/search", {
+        prompt:
+          suggestion !== undefined
+            ? suggestion.toLowerCase()
+            : prompt.toLowerCase(),
+      })
+      .then((res) => {
+        words = res.data.words.map((word) => word["word"]);
+        tokens = res.data.words.map((word) => word["a_text"]);
+      })
+      .catch((err) => {
+        toast.error("Something went wrong!", {
+          position: "top-right",
+          progressStyle: { background: "#3b82f6" },
+          theme: "dark",
+          autoClose: 2500,
+          className:
+            "relative w-64 bottom-6 left-16 bg-black shadow-sm shadow-slate-400/20 font-medium",
+        });
+        resetState();
+        return;
+      });
+    let newData = [];
     words.forEach((word, i) => {
       if (action === "") {
         action = getAction(word);
@@ -239,10 +264,10 @@ const Search = ({
           }
         }
         result.push({
-          action: action !== "" ? action : fallbackAction,
-          column: column !== "" ? column : fallbackColumn,
+          action: action || fallbackAction,
+          column: column || fallbackColumn,
           parameter: parameter,
-          value: value,
+          value: value || 1,
           ...(parameter === "between" && secondValue !== ""
             ? { secondValue: secondValue }
             : {}),
@@ -263,17 +288,22 @@ const Search = ({
             newParam = parameter;
           }
           result.push({
-            action: action !== "" ? action : fallbackAction,
-            column: column !== "" ? column : fallbackColumn,
+            action: action || fallbackAction,
+            column: column || fallbackColumn,
             parameter: newParam,
           });
           resetValues(true);
         }
       }
     });
-    result.forEach((res) => {
-      processData(res);
-    });
+    setTimeout(() => {
+      result.forEach((res) => {
+        newData = processData(res, newData);
+      });
+      newData.unshift(columns);
+      setData(newData);
+      setTimeout(() => resetState(), 100);
+    }, 300);
   };
 
   const getAction = (word) => {
@@ -329,7 +359,7 @@ const Search = ({
       (parameter !== "" || sort) &&
       ((parameter === "between"
         ? secondValue !== "" && value !== ""
-        : value !== "") ||
+        : value !== "" || parameter === "top" || parameter === "bottom") ||
         sort)
     );
   };
@@ -344,54 +374,93 @@ const Search = ({
     value = "";
   };
 
-  const processData = (result) => {
+  const compareValues = (dataType, first, second) => {
+    if (dataType === "number") return currency(first) - currency(second);
+    else if (dataType === "string") return first.localeCompare(second);
+    else return new Date(first).getTime() - new Date(second).getTime();
+  };
+
+  const includesRow = (valueSet, colIndex, newData) => {
+    return valueSet[colIndex].filter((v) => {
+      return !newData.some((row) => row.includes(v));
+    });
+  };
+
+  const sortData = (dataType, columnIndex, sortType, data) => {
+    const sortedData = data.sort((a, b) => {
+      if (dataType === "string") {
+        return !sortType
+          ? a[columnIndex].localeCompare(b[columnIndex])
+          : b[columnIndex].localeCompare(a[columnIndex]);
+      } else if (dataType === "number") {
+        return !sortType
+          ? currency(a[columnIndex]) - currency(b[columnIndex])
+          : currency(b[columnIndex]) - currency(a[columnIndex]);
+      } else if (dataType === "date") {
+        return !sortType
+          ? new Date(a[columnIndex]).getTime() -
+              new Date(b[columnIndex]).getTime()
+          : new Date(b[columnIndex]).getTime() -
+              new Date(a[columnIndex]).getTime();
+      }
+    });
+    return sortedData;
+  };
+
+  const processData = (result, resData) => {
     const colIndex = formattedColumns.indexOf(result.column);
     const column = columns[colIndex];
     const { action, parameter, value, secondValue } = result;
+    let newData = [];
     if (action === "sort") {
-      setSortColumn(column);
-      setSortType(parameter !== "ascending");
-    } else if (action === "filter" || action === "select") {
+      newData = sortData(
+        dataTypes[column],
+        colIndex,
+        parameter !== "ascending",
+        resData.length === 0 ? [...copyData].slice(1) : resData
+      );
+    } else {
       let newValues = [];
       if (parameter === "less") {
-        newValues = valueSet[colIndex].filter((v) => {
-          const val = currency(v);
-          if (action === "filter") return val < value;
+        newData = [...copyData].slice(1).filter((v) => {
+          const val = currency(v[colIndex]);
+          if (action !== "filter") return val < value;
           return val > value;
         });
       } else if (parameter === "more") {
-        newValues = valueSet[colIndex].filter((v) => {
-          const val = currency(v);
-          if (action === "filter") return val > value;
+        newData = [...copyData].slice(1).filter((v) => {
+          const val = currency(v[colIndex]);
+          if (action !== "filter") return val > value;
           return val < value;
         });
       } else if (parameter === "top") {
-        const newData = [...copyData]
+        newData = [...copyData]
           .slice(1)
-          .sort((a, b) => currency(b[colIndex]) - currency(a[colIndex]))
-          .slice(0, value);
-        newValues = valueSet[colIndex].filter((v) => {
-          const incl = newData.some((row) => row.includes(v));
-          if (action === "filter") return incl;
-          return !incl;
-        });
+          .sort((a, b) =>
+            compareValues(dataTypes[column], b[colIndex], a[colIndex])
+          )
+          .slice(
+            action === "select" ? 0 : value,
+            action === "select" ? value : copyData.length - 1
+          );
       } else if (parameter === "bottom") {
-        const newData = [...copyData]
+        newData = [...copyData]
           .slice(1)
-          .sort((a, b) => currency(a[colIndex]) - currency(b[colIndex]))
-          .slice(0, value);
-        newValues = valueSet[colIndex].filter((v) => {
-          const incl = newData.some((row) => row.includes(v));
-          if (action === "filter") return incl;
-          return !incl;
-        });
+          .sort((a, b) =>
+            compareValues(dataTypes[column], a[colIndex], b[colIndex])
+          )
+          .slice(
+            action === "select" ? 0 : value,
+            action === "select" ? value : copyData.length - 1
+          );
       } else if (parameter === "between") {
-        newValues = valueSet[colIndex].filter((v) => {
-          const val = currency(v);
-          if (action === "filter") return val > value && val < secondValue;
+        newData = [...copyData].slice(1).filter((v) => {
+          const val = currency(v[colIndex]);
+          if (action !== "filter") return val > value && val < secondValue;
           return val < value || val > secondValue;
         });
       }
+      newValues = includesRow(valueSet, colIndex, newData);
       setCurrentValues(
         currentValues.map((vals, index) => {
           if (index === colIndex) return newValues;
@@ -402,29 +471,109 @@ const Search = ({
         setFilterColumns([...filterColumns, column]);
       }
     }
+    return newData;
   };
 
-  const createSuggestion = useCallback(() => {
+  const createSuggestion = () => {
     if (!data || data.length === 0) return [];
 
-    const suggestions = [];
     const columns = data[0];
     const rows = data.slice(1);
 
-    columns.forEach((column, index) => {
-      if (index < 3) {
-        suggestions.push(`Show all data in the "${column}" column`);
-        suggestions.push(`Find unique values in "${column}"`);
+    const numberSuggestions = [];
+    const generalSuggestions = [];
+
+    const getRandomValues = (values) => {
+      const uniqueValues = [...new Set(values)];
+      if (uniqueValues.length < 2) return [uniqueValues[0], uniqueValues[0]];
+      uniqueValues.sort((a, b) => a - b);
+
+      const bottom20Index = Math.ceil(uniqueValues.length * 0.2);
+      const top80Index = Math.floor(uniqueValues.length * 0.8);
+
+      const bottomRange = uniqueValues.slice(bottom20Index);
+      const topRange = uniqueValues.slice(0, top80Index);
+
+      if (!bottomRange.length || !topRange.length) {
+        throw new Error("Not enough values in valid ranges to select from.");
       }
 
-      // if (rows.every((row) => !isNaN(row[index]))) {
-      //   suggestions.push(`Calculate the average of "${column}"`);
-      //   suggestions.push(`Find the maximum value in "${column}"`);
-      // }
-    });
+      const bottomValue =
+        bottomRange[Math.floor(Math.random() * bottomRange.length)];
+      const topValue = topRange[Math.floor(Math.random() * topRange.length)];
 
-    return suggestions;
-  }, [data]);
+      const transformToLargestSignificantDigit = (val) => {
+        const highestPlaceValue = Math.pow(10, Math.floor(Math.log10(val)));
+        return Math.round(val / highestPlaceValue) * highestPlaceValue;
+      };
+
+      let transformedBottomValue, transformedTopValue;
+
+      do {
+        const bottomValue =
+          bottomRange[Math.floor(Math.random() * bottomRange.length)];
+        const topValue = topRange[Math.floor(Math.random() * topRange.length)];
+
+        transformedBottomValue =
+          transformToLargestSignificantDigit(bottomValue);
+        transformedTopValue = transformToLargestSignificantDigit(topValue);
+      } while (transformedBottomValue === transformedTopValue);
+
+      return [
+        Math.min(transformedBottomValue, transformedTopValue),
+        Math.max(transformedBottomValue, transformedTopValue),
+      ];
+    };
+
+    const numberColumns = columns
+      .filter((col) => dataTypes[col] === "number")
+      .slice(0, 2);
+    const dateColumn = columns.find((col) => dataTypes[col] === "date");
+    const stringColumn = columns.find((col) => dataTypes[col] === "string");
+    numberColumns.forEach((column, index) => {
+      const columnValues = rows
+        .map((row) => currency(row[columns.indexOf(column)]))
+        .filter((val) => !isNaN(val));
+      if (dataTypes[column] === "number") {
+        const [value1, value2] = getRandomValues(columnValues);
+        if (numberColumns.length === 1) {
+          numberSuggestions.push(
+            `Select top 10 rows from ${column.trim()}`,
+            `Filter ${column.trim()} between ${value1} and ${value2}`
+          );
+        } else {
+          numberSuggestions.push(
+            index === 0
+              ? `Select top 10 rows from ${column.trim()}`
+              : `Filter ${column.trim()} between ${value1} and ${value2}`
+          );
+        }
+      }
+    });
+    generalSuggestions.push(
+      dateColumn !== undefined &&
+        `Sort ${dateColumn.trim()} from the latest to the earliest`,
+      `Sort ${stringColumn.trim()} from A-Z`,
+      numberColumns[0] !== undefined &&
+        `Sort ${numberColumns[0].trim()} from highest to lowest`
+    );
+
+    const prioritizedSuggestions = [
+      ...numberSuggestions,
+      ...generalSuggestions,
+    ];
+    return [...new Set(prioritizedSuggestions)].slice(0, 5);
+  };
+
+  const resetState = () => {
+    setCreateWithAI(false);
+    setSuggestion(false);
+    setPrompt("");
+    setAnalyzing(false);
+    setIsTyping(false);
+    // createWithAIRef.current.blur();
+    setSearch(false);
+  };
 
   return (
     <div
@@ -432,41 +581,46 @@ const Search = ({
         search ? "flex" : "hidden"
       }`}
     >
-      <textarea
-        ref={promptRef}
-        type="text"
-        className={`px-2 pt-1.5 text-sm font-medium resize-none border-2 border-emerald-400 border-b-slate-200 rounded-t-md bg-gradient-to-r from-cyan-500 to-emerald-300 text-white placeholder:text-white outline-none ${
-          isTyping ? "h-20 rounded-md" : "h-9"
-        } duration-200`}
-        onFocus={focus}
-        placeholder="Write your prompt..."
-        onChange={(e) => {
-          if (e.target.value === "") setIsTyping(false);
-          else {
-            setPrompt(e.target.value);
-            setIsTyping(true);
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            analyzePrompt(prompt);
-          }
-        }}
-      />
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setCreateWithAI(false);
-          setSuggestion(false);
-          setPrompt("");
-          setAnalyzing(false);
-          // createWithAIRef.current.blur();
-          setSearch(false);
-        }}
-        className={`absolute top-1 right-1 w-4 h-4 p-1 flex items-center justify-center rounded-full bg-white `}
-      >
-        <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" />
-      </button>
+      {analyzing ? (
+        <p
+          className={`px-2 pt-1.5 h-9 text-sm text-center font-medium border-2 border-emerald-400 border-b-slate-200 rounded-t-md bg-gradient-to-r from-cyan-500 to-emerald-300 text-white outline-none animate-analyzing`}
+        >
+          Analyzing...
+        </p>
+      ) : (
+        <textarea
+          ref={promptRef}
+          type="text"
+          className={`px-2 pt-1.5 text-sm font-medium resize-none border-2 border-emerald-400 border-b-slate-200 rounded-t-md bg-gradient-to-r from-cyan-500 to-emerald-300 text-white placeholder:text-white outline-none ${
+            isTyping ? "h-20 rounded-md" : "h-9"
+          } duration-200`}
+          onFocus={focus}
+          placeholder="Write your prompt..."
+          onChange={(e) => {
+            if (e.target.value === "") setIsTyping(false);
+            else {
+              setPrompt(e.target.value);
+              setIsTyping(true);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              analyzePrompt();
+            }
+          }}
+        />
+      )}
+      {!analyzing && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            resetState();
+          }}
+          className={`absolute top-1 right-1 w-4 h-4 p-1 flex items-center justify-center rounded-full bg-white `}
+        >
+          <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" />
+        </button>
+      )}
       {!isTyping && (
         <>
           <p className="px-3 py-1 z-99 text-white text-sm font-medium animate-slideIn flex items-center gap-1 [animation-fill-mode:backwards]">
@@ -480,9 +634,7 @@ const Search = ({
                 className="px-3 py-2 bg-[#2b364b] hover:bg-black duration-150  text-white cursor-pointer text-sm z-99 font-medium animate-slideIn [animation-fill-mode:backwards]"
                 style={{ animationDelay: `${index * 0.1}s` }}
                 onClick={() => {
-                  setPrompt(suggestion);
-                  setSuggestion(false);
-                  // analyzePrompt(suggestion);
+                  analyzePrompt(suggestion);
                 }}
               >
                 {suggestion}

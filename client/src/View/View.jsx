@@ -19,11 +19,18 @@ import Chart from "../Charts/Chart";
 import Sort from "../components/Sort";
 import FilterSearch from "../components/FilterSearch";
 
-const View = ({ type, data, setData, created, deleted }) => {
+const View = ({
+  type,
+  data,
+  setData,
+  copyData,
+  setCopyData,
+  created,
+  deleted,
+}) => {
   const [chartData, setChartData] = useState([]);
   const [timeData, setTimeData] = useState([]);
   const [formattedData, setFormattedData] = useState([]);
-  const [copyData, setCopyData] = useState([]);
   const [copyChartData, setCopyChartData] = useState([]);
   const [dataTypes, setDataTypes] = useState(undefined);
   const [fileSelected, setFileSelected] = useState(false);
@@ -390,6 +397,7 @@ const View = ({ type, data, setData, created, deleted }) => {
             setTimeData={setTimeData}
             dataTypes={dataTypes}
             columns={columns}
+            formattedColumns={formattedColumns}
             sort={sort}
             copyChartData={copyChartData}
             xAxisKey={xAxisKey}

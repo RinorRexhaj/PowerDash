@@ -59,7 +59,7 @@ const Sort = ({
   }, [view]);
 
   const sortData = (dataType, columnIndex) => {
-    const sortedData = [...data]
+    const sortedData = data
       .filter((row, index) => index !== 0)
       .sort((a, b) => {
         if (dataType === "string") {

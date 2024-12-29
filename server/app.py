@@ -2,10 +2,21 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import spacy
 import re
+import nltk
+from nltk import pos_tag, word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet, stopwords
+nltk.download('stopwords')
+nltk.download('punkt_tab')
+nltk.download('averaged_perceptron_tagger_eng')
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 nlp = spacy.load("en_core_web_sm")
+lemmatizer = WordNetLemmatizer()
 
 actions = [
     ["filter", "remove", "refine", "include", "exclude", "segment", "narrow", "without"],
@@ -65,7 +76,21 @@ fallback_action = None
 def home():
     return jsonify({"message": "Hello, World!"})
 
-@app.route('/prompt', methods=['POST'])
+@app.route('/create', methods=['POST'])
+def create_prompt():
+    data = request.json 
+    prompt = data["prompt"]
+    if not prompt:
+        return jsonify({"error": "No 'prompt' field provided in the request data"}), 400
+    words = word_tokenize(prompt)
+    pos_tags = pos_tag(words)
+    lemmas = [
+        {"word": lemmatizer.lemmatize(word), "type": pos}
+        for word, pos in pos_tags
+    ]
+    return jsonify({"words": lemmas})
+
+@app.route('/search', methods=['POST'])
 def analyze_prompt():
     data = request.json 
     prompt = data["prompt"]

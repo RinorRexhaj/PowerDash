@@ -1,13 +1,7 @@
 import SidebarLink from "./SidebarLink";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faLeftLong,
-  faPlus,
-  faUtensils,
-} from "@fortawesome/free-solid-svg-icons";
-import { toast } from "react-toastify";
+import { faLeftLong, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
-import ImportExcel from "../components/ImportExcel";
 
 const Sidebar = ({ open, toggleSidebar, views, setViews }) => {
   const addView = () => {

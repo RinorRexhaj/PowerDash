@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   faArrowAltCircleRight,
   faXmarkCircle,
@@ -19,6 +19,7 @@ const Filter = ({
   setFilter,
   timeFilter,
   setTimeFilter,
+  selectAllRef,
 }) => {
   const isChecked = (val) => {
     const type = dataTypes[currentColumn];
@@ -131,6 +132,7 @@ const Filter = ({
                 type="checkbox"
                 className="form-checkbox rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
                 id={"select-all-filter"}
+                ref={selectAllRef}
                 checked={
                   currentValues[columns.indexOf(currentColumn)].length === 0
                 }
