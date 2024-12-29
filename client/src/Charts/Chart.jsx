@@ -462,48 +462,44 @@ const Chart = ({
     setSuggestion(false);
     setPrompt("");
     setAnalyzing(true);
-    let words, actions, entities, parameters;
+    let words, actions, entities;
     await axios
-      .post("http://127.0.0.1:5000/prompt", {
+      .post("http://127.0.0.1:5000/create", {
         prompt,
       })
       .then((res) => {
-        words = res.data.words;
-        actions = res.data.actions;
-        entities = res.data.entities;
-        parameters = res.data.parameters;
+        words = res.data.words.map((word) => word.word);
       });
-    console.log(formattedColumns);
-    console.log(words);
-    console.log(actions);
-    console.log(entities);
-    console.log(parameters);
     let chartType, xAxis, yAxis, operation, timePeriod;
     words.forEach((word) => {
       chartTypes.forEach((type) => {
-        if (word.word === type.toLowerCase()) chartType = type;
+        if (word === type.toLowerCase()) chartType = type;
       });
       operations.forEach((op) => {
-        if (word.word === op.toLowerCase()) operation = op;
+        if (word === op.toLowerCase()) operation = op;
       });
-      for (const [index, col] of formattedColumns.entries()) {
+      for (let i = 0; i < formattedColumns.length; i++) {
+        const col = formattedColumns[i];
         const colWords = col.split(" ");
-        const matchesAll = colWords.every((w) => prompt.includes(w));
-        if (matchesAll && dataTypes[columns[index]] === "number") {
-          yAxis = columns[index];
-          return;
-        } else {
-          yAxis = columns[index];
+        const matchesAll = colWords.every((w) => words.join(" ").includes(w));
+        if (dataTypes[columns[i]] === "number") {
+          if (matchesAll) {
+            yAxis = columns[i];
+            break;
+          } else {
+            yAxis = columns[i];
+          }
         }
       }
-      for (const [index, col] of formattedColumns.entries()) {
+      for (let i = 0; i < formattedColumns.length; i++) {
+        const col = formattedColumns[i];
         const colWords = col.split(" ");
-        const matchesAll = colWords.every((w) => prompt.includes(w));
-        if (matchesAll && dataTypes[columns[index]] === "number") {
-          xAxis = columns[index];
-          return;
-        } else {
-          xAxis = columns[index];
+        const matchesAll = colWords.every((w) => words.join(" ").includes(w));
+        if (dataTypes[columns[i]] !== "number") {
+          if (matchesAll) {
+            xAxis = columns[i];
+            break;
+          }
         }
       }
       for (const [index, period] of [
@@ -512,7 +508,7 @@ const Chart = ({
         "quarter",
         "year",
       ].entries()) {
-        if (word.word === period || word.word.includes(period)) {
+        if (word === period || word.includes(period)) {
           timePeriod = timePeriods[index];
           if (xAxis === undefined) {
             for (const col of columns) {
@@ -526,6 +522,10 @@ const Chart = ({
         }
       }
     });
+    console.log(xAxis);
+    console.log(yAxis);
+    console.log(operation);
+    console.log(timePeriod);
     setTimeout(() => {
       if (chartType !== undefined) setChartType(chartType);
       else setChartType("Bar");

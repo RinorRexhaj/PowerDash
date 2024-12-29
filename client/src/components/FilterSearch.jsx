@@ -1,9 +1,11 @@
 import {
+  faCircleMinus,
   faFilter,
+  faFilterCircleXmark,
   faMagnifyingGlassChart,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Search from "./Search";
 import Filter from "./Filter";
 import currency from "currency.js";
@@ -30,6 +32,7 @@ const FilterSearch = ({
   const [currentValues, setCurrentValues] = useState([]);
   const [valueSet, setValueSet] = useState([]);
   const [timeFilter, setTimeFilter] = useState("Daily");
+  const selectAllRef = useRef(null);
 
   useEffect(() => {
     initializeValues();
@@ -50,6 +53,15 @@ const FilterSearch = ({
     if (currentValues.length === 0) return;
     filterData();
     filterCharts();
+    if (currentColumn !== "") {
+      if (
+        currentValues[columns.indexOf(currentColumn)].length !== 0 &&
+        currentValues[columns.indexOf(currentColumn)].length !==
+          valueSet[columns.indexOf(currentColumn)].length
+      )
+        selectAllRef.current.indeterminate = true;
+      else selectAllRef.current.indeterminate = false;
+    }
   }, [currentValues]);
 
   useEffect(() => {
@@ -76,6 +88,7 @@ const FilterSearch = ({
       }
       return true;
     });
+    if (search) return;
     newData.unshift(columns);
     setData(newData);
   };
@@ -253,7 +266,26 @@ const FilterSearch = ({
           setSearch(false);
         }}
       >
-        Filter <FontAwesomeIcon icon={faFilter} />
+        Filter{" "}
+        <FontAwesomeIcon
+          icon={
+            currentValues.some((values) => values.length > 0)
+              ? faFilterCircleXmark
+              : faFilter
+          }
+          className={`${
+            currentValues.some((values) => values.length > 0) &&
+            "hover:bg-cyan-800 py-1 px-1.5 rounded-sm duration-150"
+          }`}
+          onClick={(e) => {
+            if (currentValues.some((values) => values.length > 0)) {
+              e.stopPropagation();
+              setCurrentValues(columns.map(() => []));
+              setFilterColumns([]);
+              setCurrentColumn("");
+            }
+          }}
+        />
       </button>
       <span className="h-full w-[1px] z-99 bg-white"></span>
       <button
@@ -285,6 +317,7 @@ const FilterSearch = ({
         setFilter={setFilter}
         timeFilter={timeFilter}
         setTimeFilter={setTimeFilter}
+        selectAllRef={selectAllRef}
       />
       <Search
         search={search}
