@@ -23,20 +23,30 @@ const DefaultView = ({ type }) => {
             })}
           </h1>
         </div>
-        <p
-          className={`w-full animate-fade flex justify-center mt-40 text-2xl text-black font-bold [animation-fill-mode:backwards]`}
-          style={{ animationDelay: "1s" }}
-        >
-          Start your data visualization journey
-        </p>
-        <p
-          className="w-full flex justify-center animate-slideIn text-lg font-medium [animation-fill-mode:backwards]"
-          style={{ animationDelay: "1.25s" }}
-        >
-          {Object.entries(localStorage).length === 0
-            ? "Click the + to add a new view for your data"
-            : "Check out the views on the side"}
-        </p>
+        <div className="w-full flex items-center justify-center gap-2">
+          <img
+            src="src/assets/img/data.jpg"
+            alt=""
+            className="relative top-10 w-1/3 animate-fade [animation-fill-mode:backwards]"
+            style={{ animationDelay: "0.5s" }}
+          />
+          <div className="w-1/2">
+            <p
+              className={`w-full animate-fade flex justify-center mt-30 text-2xl text-black font-bold [animation-fill-mode:backwards]`}
+              style={{ animationDelay: "1s" }}
+            >
+              Start your data visualization journey
+            </p>
+            <p
+              className="w-full flex justify-center animate-slideIn text-lg font-medium [animation-fill-mode:backwards]"
+              style={{ animationDelay: "1.25s" }}
+            >
+              {Object.entries(localStorage).length === 0
+                ? "Click the + to add a new view for your data"
+                : "Check out the views on the side"}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
