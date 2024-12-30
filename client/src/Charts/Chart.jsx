@@ -560,18 +560,6 @@ const Chart = ({
     return suggestions;
   };
 
-  const filterSuggestion = (data) => {
-    const bounds = [
-      Math.min(...data.map((d) => d[yAxisKey])),
-      Math.max(...data.map((d) => d[yAxisKey])),
-    ];
-    bounds[0] /= Math.floor(Math.log10(Math.abs(bounds[0]))) + 1;
-    bounds[1] /= Math.floor(Math.log10(Math.abs(bounds[1]))) + 1;
-    bounds[0] *= 0.75;
-    bounds[1] *= 1.25;
-    console.log(bounds);
-  };
-
   const chartToImage = useCallback(async () => {
     const png = await getPng();
     if (png) {
@@ -632,19 +620,23 @@ const Chart = ({
         ]);
       });
     }
+    const totalValue = formattedData.reduce((total, item) => {
+      return total + (item[yAxisKey] || 0);
+    }, 0);
+    console.log(totalValue);
     tableData.push([
       "Total",
       new Intl.NumberFormat("en-US", {
         compactDisplay: "short",
         minimumFractionDigits: 2,
-      }).format(total),
+      }).format(totalValue),
     ]);
     tableData.push([
       "Average",
       new Intl.NumberFormat("en-US", {
         compactDisplay: "short",
         minimumFractionDigits: 2,
-      }).format((total / (tableData.length - 1)).toFixed(2)),
+      }).format((totalValue / (tableData.length - 1)).toFixed(2)),
     ]);
     const headers = ["Column", `${operation} of ${yAxisKey}`];
     const pageWidth = pdf.internal.pageSize.width;
