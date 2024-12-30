@@ -522,10 +522,6 @@ const Chart = ({
         }
       }
     });
-    console.log(xAxis);
-    console.log(yAxis);
-    console.log(operation);
-    console.log(timePeriod);
     setTimeout(() => {
       if (chartType !== undefined) setChartType(chartType);
       else setChartType("Bar");
@@ -583,89 +579,111 @@ const Chart = ({
     }
   }, [getPng]);
 
-  const chartToPDF = useCallback(async () => {
-    const png = await getPng();
-    if (png) {
-      const pdf = new jsPDF();
-      const imgProps = pdf.getImageProperties(png);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-      pdf.addImage(png, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.addPage();
-      const tableData = [];
-      if (timePeriod) {
-        timeData.forEach((column) => {
-          tableData.push([
-            column[xAxisKey[0]],
-            new Intl.NumberFormat("en-US", {
-              compactDisplay: "short",
-              minimumFractionDigits: column[yAxisKey] % 1 === 0 ? 0 : 2,
-            }).format(
-              column[yAxisKey] % 1 === 0
-                ? column[yAxisKey]
-                : column[yAxisKey].toFixed(2)
-            ),
-          ]);
-        });
-      } else {
-        formattedData.forEach((column) => {
-          tableData.push([
-            column[xAxisKey[0]],
-            new Intl.NumberFormat("en-US", {
-              compactDisplay: "short",
-              minimumFractionDigits: column[yAxisKey] % 1 === 0 ? 0 : 2,
-            }).format(
-              column[yAxisKey] % 1 === 0
-                ? column[yAxisKey]
-                : column[yAxisKey].toFixed(2)
-            ),
-          ]);
-        });
-      }
-      tableData.push([
-        "Total",
-        new Intl.NumberFormat("en-US", {
-          compactDisplay: "short",
-          minimumFractionDigits: 2,
-        }).format(total),
-      ]);
-      tableData.push([
-        "Average",
-        new Intl.NumberFormat("en-US", {
-          compactDisplay: "short",
-          minimumFractionDigits: 2,
-        }).format((total / (tableData.length - 1)).toFixed(2)),
-      ]);
-      const headers = ["Column", `${operation} of ${yAxisKey}`];
-      const pageWidth = pdf.internal.pageSize.width;
-      const tableWidth = pageWidth * 0.4;
-
-      pdf.autoTable({
-        head: [headers],
-        body: tableData,
-        startY: 20,
-        margin: { left: (pageWidth - tableWidth) / 2 },
-        theme: "grid",
-        tableWidth: "wrap",
-        didParseCell: (data) => {
-          data.cell.styles.halign = "right";
-          data.cell.styles.cellPadding = {
-            top: 1.5,
-            bottom: 1.5,
-            left: 5,
-            right: 2,
-          };
-          if (data.row.index >= tableData.length - 2) {
-            data.cell.styles.fontStyle = "bold";
-            data.cell.styles.fillColor = [216, 221, 230];
-          }
-        },
+  const chartToPDF = () => {
+    const pdf = new jsPDF();
+    let tableData = [];
+    if (timePeriod && xAxisKey.length === 1) {
+      timeData.forEach((column) => {
+        tableData.push([
+          column[xAxisKey[0]],
+          new Intl.NumberFormat("en-US", {
+            compactDisplay: "short",
+            minimumFractionDigits: column[yAxisKey] % 1 === 0 ? 0 : 2,
+          }).format(column[yAxisKey]),
+        ]);
       });
-      const pdfBlob = pdf.output("blob");
-      FileSaver.saveAs(pdfBlob, `${title}.pdf`);
+    } else if (xAxisKey.length === 1) {
+      formattedData.forEach((column) => {
+        tableData.push([
+          column[xAxisKey[0]],
+          new Intl.NumberFormat("en-US", {
+            compactDisplay: "short",
+            minimumFractionDigits: column[yAxisKey] % 1 === 0 ? 0 : 2,
+          }).format(column[yAxisKey]),
+        ]);
+      });
+    } else {
+      const totals = formattedData.reduce((totals, item) => {
+        const xKey = item[xAxisKey[0]];
+        const yKey = item[yAxisKey];
+        if (!totals[xKey]) {
+          totals[xKey] = 0;
+        }
+        totals[xKey] += yKey;
+        return totals;
+      }, {});
+      formattedData.forEach((column) => {
+        if (!tableData.some((row) => row.includes(column[xAxisKey[0]]))) {
+          tableData.push([
+            column[xAxisKey[0]],
+            new Intl.NumberFormat("en-US", {
+              compactDisplay: "short",
+              minimumFractionDigits:
+                totals[column[xAxisKey[0]]] % 1 === 0 ? 0 : 2,
+            }).format(totals[column[xAxisKey[0]]]),
+          ]);
+        }
+        tableData.push([
+          column[xAxisKey[1]],
+          new Intl.NumberFormat("en-US", {
+            compactDisplay: "short",
+            minimumFractionDigits: column[yAxisKey] % 1 === 0 ? 0 : 2,
+          }).format(column[yAxisKey]),
+        ]);
+      });
     }
-  }, [getPng, data, title]);
+    tableData.push([
+      "Total",
+      new Intl.NumberFormat("en-US", {
+        compactDisplay: "short",
+        minimumFractionDigits: 2,
+      }).format(total),
+    ]);
+    tableData.push([
+      "Average",
+      new Intl.NumberFormat("en-US", {
+        compactDisplay: "short",
+        minimumFractionDigits: 2,
+      }).format((total / (tableData.length - 1)).toFixed(2)),
+    ]);
+    const headers = ["Column", `${operation} of ${yAxisKey}`];
+    const pageWidth = pdf.internal.pageSize.width;
+    const tableWidth = pageWidth * 0.4;
+
+    pdf.autoTable({
+      head: [headers],
+      body: tableData,
+      startY: 20,
+      margin: { left: (pageWidth - tableWidth) / 2 },
+      theme: "grid",
+      tableWidth: "wrap",
+      didParseCell: (data) => {
+        data.cell.styles.halign = "right";
+        data.cell.styles.cellPadding = {
+          top: 1.5,
+          bottom: 1.5,
+          left: 5,
+          right: 2,
+        };
+        if (formattedData.some((row) => row[xAxisKey[0]] === data.row.raw[0])) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [200, 200, 230];
+        }
+        if (data.row.index >= tableData.length - 2) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [216, 221, 230];
+        }
+        if (data.column.index === headers.length - 1) {
+          const cellValue = data.row.raw[1];
+          if (!cellValue.toString().includes(".")) {
+            data.cell.styles.cellPadding.right = 7;
+          }
+        }
+      },
+    });
+    const pdfBlob = pdf.output("blob");
+    FileSaver.saveAs(pdfBlob, `${title}.pdf`);
+  };
 
   return (
     <div className="py-4">

@@ -205,12 +205,13 @@ const Search = ({
     const maxLength = Math.max(
       ...formattedColumns.map((col) => col.split(" ").length)
     );
+    const newPrompt =
+      suggestion !== undefined
+        ? suggestion.toLowerCase()
+        : prompt.toLowerCase();
     await axios
       .post("http://127.0.0.1:5000/search", {
-        prompt:
-          suggestion !== undefined
-            ? suggestion.toLowerCase()
-            : prompt.toLowerCase(),
+        prompt: newPrompt,
       })
       .then((res) => {
         words = res.data.words.map((word) => word["word"]);

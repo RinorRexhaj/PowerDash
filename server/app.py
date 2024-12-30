@@ -220,7 +220,6 @@ def extract_actions_and_parameters(prompt):
             else:
                 column = get_column(words[i:i + max_col_length + 1])
                 fallback_column = column if column != "" else ""
-            print(column)
         if not value:
             value = get_value(word)
         if action_type == "sort" and not any(action["action"] == "sort" for action in result) and all_values(True):    
